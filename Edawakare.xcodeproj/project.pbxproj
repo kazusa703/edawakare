@@ -20,21 +20,6 @@
 		ACD313982F045BC400E076C4 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313902F045BC400E076C4 /* User.swift */; };
 		ACD313992F045BC400E076C4 /* NodeConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3138D2F045BC400E076C4 /* NodeConnection.swift */; };
 		ACD3139E2F045BCF00E076C4 /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3139A2F045BCF00E076C4 /* MockData.swift */; };
-		ACD313BC2F045BD800E076C4 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313A02F045BD800E076C4 /* LoginView.swift */; };
-		ACD313BD2F045BD800E076C4 /* PasswordResetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313A12F045BD800E076C4 /* PasswordResetView.swift */; };
-		ACD313BE2F045BD800E076C4 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313A22F045BD800E076C4 /* SignUpView.swift */; };
-		ACD313C02F045BD800E076C4 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313AB2F045BD800E076C4 /* NotificationsView.swift */; };
-		ACD313C12F045BD800E076C4 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313B72F045BD800E076C4 /* SearchView.swift */; };
-		ACD313C32F045BD800E076C4 /* DMViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313A62F045BD800E076C4 /* DMViews.swift */; };
-		ACD313C42F045BD800E076C4 /* ProfileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313AE2F045BD800E076C4 /* ProfileViews.swift */; };
-		ACD313C52F045BD800E076C4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313B92F045BD800E076C4 /* SettingsView.swift */; };
-		ACD313C62F045BD800E076C4 /* HomeFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313A82F045BD800E076C4 /* HomeFeedView.swift */; };
-		ACD313C72F045BD800E076C4 /* CommonComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313A42F045BD800E076C4 /* CommonComponents.swift */; };
-		ACD313C82F045BD800E076C4 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313B52F045BD800E076C4 /* PostDetailView.swift */; };
-		ACD313C92F045BD800E076C4 /* CommentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313B22F045BD800E076C4 /* CommentsView.swift */; };
-		ACD313CA2F045BD800E076C4 /* MyPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313B02F045BD800E076C4 /* MyPageView.swift */; };
-		ACD313CB2F045BD800E076C4 /* MindMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313B42F045BD800E076C4 /* MindMapView.swift */; };
-		ACD313CC2F045BD800E076C4 /* CreatePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313B32F045BD800E076C4 /* CreatePostView.swift */; };
 		ACD313D02F0461C900E076C4 /* Userblockreportservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313CF2F0461C900E076C4 /* Userblockreportservice.swift */; };
 		ACD313D22F0461D500E076C4 /* PostService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313D12F0461D500E076C4 /* PostService.swift */; };
 		ACD313D42F0461DD00E076C4 /* NotificationMessageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313D32F0461DD00E076C4 /* NotificationMessageService.swift */; };
@@ -42,9 +27,6 @@
 		ACD313D82F0461EF00E076C4 /* Authservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313D72F0461EF00E076C4 /* Authservice.swift */; };
 		ACD313DC2F04625D00E076C4 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313DB2F04625D00E076C4 /* SupabaseClient.swift */; };
 		ACD314002F04C42600E076C4 /* FeedViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313FF2F04C42600E076C4 /* FeedViewModel.swift */; };
-		ACD314022F04D00D00E076C4 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314012F04D00D00E076C4 /* MainTabView.swift */; };
-		ACD314042F060C8500E076C4 /* EditPostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314032F060C8500E076C4 /* EditPostView.swift */; };
-		ACD314062F061A4B00E076C4 /* MyPostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314052F061A4B00E076C4 /* MyPostDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,21 +38,6 @@
 		ACD3138F2F045BC400E076C4 /* Post.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Post.swift; sourceTree = "<group>"; };
 		ACD313902F045BC400E076C4 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		ACD3139A2F045BCF00E076C4 /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
-		ACD313A02F045BD800E076C4 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
-		ACD313A12F045BD800E076C4 /* PasswordResetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetView.swift; sourceTree = "<group>"; };
-		ACD313A22F045BD800E076C4 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
-		ACD313A42F045BD800E076C4 /* CommonComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommonComponents.swift; sourceTree = "<group>"; };
-		ACD313A62F045BD800E076C4 /* DMViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DMViews.swift; sourceTree = "<group>"; };
-		ACD313A82F045BD800E076C4 /* HomeFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeedView.swift; sourceTree = "<group>"; };
-		ACD313AB2F045BD800E076C4 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
-		ACD313AE2F045BD800E076C4 /* ProfileViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViews.swift; sourceTree = "<group>"; };
-		ACD313B02F045BD800E076C4 /* MyPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPageView.swift; sourceTree = "<group>"; };
-		ACD313B22F045BD800E076C4 /* CommentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentsView.swift; sourceTree = "<group>"; };
-		ACD313B32F045BD800E076C4 /* CreatePostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePostView.swift; sourceTree = "<group>"; };
-		ACD313B42F045BD800E076C4 /* MindMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MindMapView.swift; sourceTree = "<group>"; };
-		ACD313B52F045BD800E076C4 /* PostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostDetailView.swift; sourceTree = "<group>"; };
-		ACD313B72F045BD800E076C4 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
-		ACD313B92F045BD800E076C4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		ACD313CF2F0461C900E076C4 /* Userblockreportservice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Userblockreportservice.swift; sourceTree = "<group>"; };
 		ACD313D12F0461D500E076C4 /* PostService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostService.swift; sourceTree = "<group>"; };
 		ACD313D32F0461DD00E076C4 /* NotificationMessageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationMessageService.swift; sourceTree = "<group>"; };
@@ -78,15 +45,30 @@
 		ACD313D72F0461EF00E076C4 /* Authservice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Authservice.swift; sourceTree = "<group>"; };
 		ACD313DB2F04625D00E076C4 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		ACD313FF2F04C42600E076C4 /* FeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedViewModel.swift; sourceTree = "<group>"; };
-		ACD314012F04D00D00E076C4 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
-		ACD314032F060C8500E076C4 /* EditPostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPostView.swift; sourceTree = "<group>"; };
-		ACD314052F061A4B00E076C4 /* MyPostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPostDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		ACD3140C2F07069B00E076C4 /* Exceptions for "Edawakare" folder in "Edawakare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = ACD312F72F03A4A800E076C4 /* Edawakare */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		ACD312FA2F03A4A800E076C4 /* Edawakare */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ACD3140C2F07069B00E076C4 /* Exceptions for "Edawakare" folder in "Edawakare" target */,
+			);
 			path = Edawakare;
+			sourceTree = "<group>";
+		};
+		ACD3140D2F07072100E076C4 /* New Folder */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "New Folder";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -111,7 +93,7 @@
 		ACD312EF2F03A4A800E076C4 = {
 			isa = PBXGroup;
 			children = (
-				ACD313BB2F045BD800E076C4 /* Views */,
+				ACD3140D2F07072100E076C4 /* New Folder */,
 				ACD3139B2F045BCF00E076C4 /* Utilities */,
 				ACD3139D2F045BCF00E076C4 /* ViewModels */,
 				ACD313912F045BC400E076C4 /* Models */,
@@ -179,111 +161,6 @@
 			path = ViewModels;
 			sourceTree = "<group>";
 		};
-		ACD313A32F045BD800E076C4 /* Auth */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313A02F045BD800E076C4 /* LoginView.swift */,
-				ACD313A12F045BD800E076C4 /* PasswordResetView.swift */,
-				ACD313A22F045BD800E076C4 /* SignUpView.swift */,
-			);
-			path = Auth;
-			sourceTree = "<group>";
-		};
-		ACD313A52F045BD800E076C4 /* Components */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313A42F045BD800E076C4 /* CommonComponents.swift */,
-			);
-			path = Components;
-			sourceTree = "<group>";
-		};
-		ACD313A72F045BD800E076C4 /* DM */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313A62F045BD800E076C4 /* DMViews.swift */,
-			);
-			path = DM;
-			sourceTree = "<group>";
-		};
-		ACD313AA2F045BD800E076C4 /* Home */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313A82F045BD800E076C4 /* HomeFeedView.swift */,
-				ACD314012F04D00D00E076C4 /* MainTabView.swift */,
-			);
-			path = Home;
-			sourceTree = "<group>";
-		};
-		ACD313AC2F045BD800E076C4 /* Notifications */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313AB2F045BD800E076C4 /* NotificationsView.swift */,
-			);
-			path = Notifications;
-			sourceTree = "<group>";
-		};
-		ACD313AF2F045BD800E076C4 /* Profile */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313AE2F045BD800E076C4 /* ProfileViews.swift */,
-				ACD314052F061A4B00E076C4 /* MyPostDetailView.swift */,
-			);
-			path = Profile;
-			sourceTree = "<group>";
-		};
-		ACD313B12F045BD800E076C4 /* Main */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313A72F045BD800E076C4 /* DM */,
-				ACD313AA2F045BD800E076C4 /* Home */,
-				ACD313AC2F045BD800E076C4 /* Notifications */,
-				ACD313AF2F045BD800E076C4 /* Profile */,
-				ACD313B02F045BD800E076C4 /* MyPageView.swift */,
-			);
-			path = Main;
-			sourceTree = "<group>";
-		};
-		ACD313B62F045BD800E076C4 /* Post */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313B22F045BD800E076C4 /* CommentsView.swift */,
-				ACD313B32F045BD800E076C4 /* CreatePostView.swift */,
-				ACD313B42F045BD800E076C4 /* MindMapView.swift */,
-				ACD313B52F045BD800E076C4 /* PostDetailView.swift */,
-				ACD314032F060C8500E076C4 /* EditPostView.swift */,
-			);
-			path = Post;
-			sourceTree = "<group>";
-		};
-		ACD313B82F045BD800E076C4 /* Search */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313B72F045BD800E076C4 /* SearchView.swift */,
-			);
-			path = Search;
-			sourceTree = "<group>";
-		};
-		ACD313BA2F045BD800E076C4 /* Settings */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313B92F045BD800E076C4 /* SettingsView.swift */,
-			);
-			path = Settings;
-			sourceTree = "<group>";
-		};
-		ACD313BB2F045BD800E076C4 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				ACD313A32F045BD800E076C4 /* Auth */,
-				ACD313A52F045BD800E076C4 /* Components */,
-				ACD313B12F045BD800E076C4 /* Main */,
-				ACD313B62F045BD800E076C4 /* Post */,
-				ACD313B82F045BD800E076C4 /* Search */,
-				ACD313BA2F045BD800E076C4 /* Settings */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -301,6 +178,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				ACD312FA2F03A4A800E076C4 /* Edawakare */,
+				ACD3140D2F07072100E076C4 /* New Folder */,
 			);
 			name = Edawakare;
 			packageProductDependencies = (
@@ -367,29 +245,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ACD314042F060C8500E076C4 /* EditPostView.swift in Sources */,
 				ACD313D02F0461C900E076C4 /* Userblockreportservice.swift in Sources */,
 				ACD313952F045BC400E076C4 /* Post.swift in Sources */,
 				ACD313DC2F04625D00E076C4 /* SupabaseClient.swift in Sources */,
-				ACD313BC2F045BD800E076C4 /* LoginView.swift in Sources */,
-				ACD313BD2F045BD800E076C4 /* PasswordResetView.swift in Sources */,
-				ACD313BE2F045BD800E076C4 /* SignUpView.swift in Sources */,
-				ACD313C02F045BD800E076C4 /* NotificationsView.swift in Sources */,
-				ACD313C12F045BD800E076C4 /* SearchView.swift in Sources */,
-				ACD313C32F045BD800E076C4 /* DMViews.swift in Sources */,
-				ACD313C42F045BD800E076C4 /* ProfileViews.swift in Sources */,
-				ACD314062F061A4B00E076C4 /* MyPostDetailView.swift in Sources */,
-				ACD313C52F045BD800E076C4 /* SettingsView.swift in Sources */,
-				ACD313C62F045BD800E076C4 /* HomeFeedView.swift in Sources */,
 				ACD314002F04C42600E076C4 /* FeedViewModel.swift in Sources */,
-				ACD313C72F045BD800E076C4 /* CommonComponents.swift in Sources */,
-				ACD313C82F045BD800E076C4 /* PostDetailView.swift in Sources */,
-				ACD313C92F045BD800E076C4 /* CommentsView.swift in Sources */,
-				ACD313CA2F045BD800E076C4 /* MyPageView.swift in Sources */,
 				ACD313D62F0461E800E076C4 /* InteractionService.swift in Sources */,
-				ACD313CB2F045BD800E076C4 /* MindMapView.swift in Sources */,
 				ACD313D82F0461EF00E076C4 /* Authservice.swift in Sources */,
-				ACD313CC2F045BD800E076C4 /* CreatePostView.swift in Sources */,
 				ACD313962F045BC400E076C4 /* Node.swift in Sources */,
 				ACD3139E2F045BCF00E076C4 /* MockData.swift in Sources */,
 				ACD313D22F0461D500E076C4 /* PostService.swift in Sources */,
@@ -398,7 +259,6 @@
 				ACD313982F045BC400E076C4 /* User.swift in Sources */,
 				ACD313992F045BC400E076C4 /* NodeConnection.swift in Sources */,
 				ACD3138B2F045BAD00E076C4 /* EdawakareApp.swift in Sources */,
-				ACD314022F04D00D00E076C4 /* MainTabView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -536,11 +396,13 @@
 				DEVELOPMENT_TEAM = WM7939G226;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Edawakare/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -568,11 +430,13 @@
 				DEVELOPMENT_TEAM = WM7939G226;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Edawakare/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

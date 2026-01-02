@@ -6,18 +6,58 @@ import SwiftUI
 struct EdawakareApp: App {
     @StateObject private var authService = AuthService()
     @AppStorage("isDarkMode") private var isDarkMode = false
+    @State private var deepLinkPostId: UUID? = nil
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(deepLinkPostId: $deepLinkPostId)
                 .environmentObject(authService)
                 .preferredColorScheme(isDarkMode ? .dark : .light)
+                .onOpenURL { url in
+                    handleDeepLink(url)
+                }
+        }
+    }
+    
+    // MARK: - ディープリンク処理
+    private func handleDeepLink(_ url: URL) {
+        print("🔗 [DeepLink] 受信: \(url)")
+        print("🔗 [DeepLink] scheme: \(url.scheme ?? "nil")")
+        print("🔗 [DeepLink] host: \(url.host ?? "nil")")
+        print("🔗 [DeepLink] path: \(url.path)")
+        print("🔗 [DeepLink] pathComponents: \(url.pathComponents)")
+        
+        // edawakare://post/xxxxx の形式をパース
+        guard url.scheme == "edawakare" else {
+            print("🔴 [DeepLink] 不明なスキーム")
+            return
+        }
+        
+        switch url.host {
+        case "post":
+            // edawakare://post/{postId}
+            if let postIdString = url.pathComponents.dropFirst().first,
+               let postId = UUID(uuidString: postIdString) {
+                print("✅ [DeepLink] 投稿ID: \(postId)")
+                deepLinkPostId = postId
+            } else {
+                print("🔴 [DeepLink] 投稿IDのパースに失敗")
+            }
+            
+        case "user":
+            // edawakare://user/{userId} - 将来の拡張用
+            print("ℹ️ [DeepLink] ユーザーリンク（未実装）")
+            
+        default:
+            print("🔴 [DeepLink] 不明なホスト: \(url.host ?? "nil")")
         }
     }
 }
 
+// MARK: - ContentView
 struct ContentView: View {
     @EnvironmentObject var authService: AuthService
+    @Binding var deepLinkPostId: UUID?
     
     var body: some View {
         Group {
@@ -29,6 +69,10 @@ struct ContentView: View {
             } else {
                 LoginView()
             }
+        }
+        .sheet(item: $deepLinkPostId) { postId in
+            DeepLinkPostView(postId: postId)
+                .environmentObject(authService)  // これを追加
         }
     }
 }
@@ -61,4 +105,9 @@ struct LaunchScreenView: View {
             }
         }
     }
+}
+
+// MARK: - UUID を Identifiable に準拠させる
+extension UUID: Identifiable {
+    public var id: UUID { self }
 }
