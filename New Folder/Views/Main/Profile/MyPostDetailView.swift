@@ -83,6 +83,14 @@ struct MyPostDetailView: View {
         .navigationTitle(post.centerNodeText)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // コメントボタン（追加）
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showComments = true }) {
+                    Image(systemName: "bubble.right")
+                }
+            }
+            
+            // メニューボタン
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
                     withAnimation(.spring(response: 0.3)) {
