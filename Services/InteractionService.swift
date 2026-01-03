@@ -329,16 +329,88 @@ class InteractionService {
             throw error
         }
     }
-    
+    // MARK: - ブックマーク取得
     func fetchBookmarks(userId: UUID) async throws -> [Post] {
-        let bookmarks: [Bookmark] = try await SupabaseClient.shared.client
-            .from("bookmarks")
-            .select("post:posts(*, user:users(*), nodes(*), connections:node_connections(*))")
-            .eq("user_id", value: userId.uuidString)
-            .order("created_at", ascending: false)
-            .execute()
-            .value
-        return bookmarks.compactMap { $0.post }
+        print("🟡 [ブックマーク取得] 開始 - userId: \(userId)")
+        
+        // 専用のデコード構造体
+        struct BookmarkWithPost: Decodable {
+            let post: Post
+        }
+        
+        do {
+            let bookmarks: [BookmarkWithPost] = try await SupabaseClient.shared.client
+                .from("bookmarks")
+                .select("""
+                    post:posts(
+                        *,
+                        user:users(*),
+                        nodes(*),
+                        connections:node_connections(*)
+                    )
+                """)
+                .eq("user_id", value: userId.uuidString)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+            
+            let posts = bookmarks.compactMap { $0.post }
+            print("✅ [ブックマーク取得] 成功 - 件数: \(posts.count)")
+            return posts
+        } catch {
+            print("🔴 [ブックマーク取得] エラー: \(error)")
+            throw error
+        }
+    }
+    
+    // MARK: - フォロワー一覧取得
+    func fetchFollowers(userId: UUID) async throws -> [User] {
+        print("🟡 [フォロワー一覧] 開始 - userId: \(userId)")
+        
+        struct FollowWithUser: Decodable {
+            let follower: User
+        }
+        
+        do {
+            let follows: [FollowWithUser] = try await SupabaseClient.shared.client
+                .from("follows")
+                .select("follower:users!follower_id(*)")
+                .eq("following_id", value: userId.uuidString)
+                .execute()
+                .value
+            
+            let users = follows.map { $0.follower }
+            print("✅ [フォロワー一覧] 成功 - 件数: \(users.count)")
+            return users
+        } catch {
+            print("🔴 [フォロワー一覧] エラー: \(error)")
+            throw error
+        }
+    }
+
+    // MARK: - フォロー中一覧取得
+    func fetchFollowing(userId: UUID) async throws -> [User] {
+        print("🟡 [フォロー中一覧] 開始 - userId: \(userId)")
+        
+        struct FollowWithUser: Decodable {
+            let following: User
+        }
+        
+        do {
+            let follows: [FollowWithUser] = try await SupabaseClient.shared.client
+                .from("follows")
+                .select("following:users!following_id(*)")
+                .eq("follower_id", value: userId.uuidString)
+                .execute()
+                .value
+            
+            let users = follows.map { $0.following }
+            print("✅ [フォロー中一覧] 成功 - 件数: \(users.count)")
+            return users
+        } catch {
+            print("🔴 [フォロー中一覧] エラー: \(error)")
+            throw error
+        }
     }
     
     // =============================================

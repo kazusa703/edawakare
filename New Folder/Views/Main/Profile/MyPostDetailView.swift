@@ -161,10 +161,16 @@ struct MyPostDetailView: View {
         }
     }
     
+    // MyPostDetailView.swift の deletePost() を修正
+
     private func deletePost() {
         Task {
             do {
                 try await PostService.shared.deletePost(postId: post.id)
+                
+                // ✅ 投稿削除の通知を発火
+                NotificationCenter.default.post(name: .postDeleted, object: nil)
+                
                 await onUpdate()
                 dismiss()
             } catch {

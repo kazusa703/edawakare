@@ -1,6 +1,7 @@
 // Views/Settings/SettingsView.swift
 
 import SwiftUI
+import PhotosUI
 
 struct SettingsView: View {
     @EnvironmentObject var authService: AuthService
@@ -17,6 +18,9 @@ struct SettingsView: View {
                 
                 // アカウント設定
                 accountSection
+                
+                // ブックマーク
+                bookmarkSection
                 
                 // サポート
                 supportSection
@@ -65,7 +69,7 @@ struct SettingsView: View {
         Section {
             Button(action: { showEditProfile = true }) {
                 HStack(spacing: 12) {
-                    ProfileAvatarView(user: authService.currentUser)
+                    ProfileAvatarView(user: authService.currentUser, size: 50)
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(authService.currentUser?.displayName ?? "ユーザー")
@@ -89,14 +93,24 @@ struct SettingsView: View {
     // MARK: - アカウント設定セクション
     private var accountSection: some View {
         Section("アカウント") {
-            NavigationLink(destination: PrivacySettingsView()) {
+            NavigationLink(destination: PrivacySettingsView().environmentObject(authService)) {
                 Label("プライバシー設定", systemImage: "lock")
             }
             NavigationLink(destination: NotificationSettingsView()) {
                 Label("通知設定", systemImage: "bell")
             }
-            NavigationLink(destination: BlockedUsersView()) {
+            NavigationLink(destination: BlockedUsersView().environmentObject(authService)) {
                 Label("ブロック中のユーザー", systemImage: "person.crop.circle.badge.minus")
+            }
+        }
+    }
+    
+    // MARK: - ブックマークセクション
+    private var bookmarkSection: some View {
+        Section {
+            NavigationLink(destination: BookmarksListView().environmentObject(authService)) {
+                Label("ブックマーク", systemImage: "bookmark.fill")
+                    .foregroundColor(.purple)
             }
         }
     }
@@ -164,25 +178,53 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - プロフィールアバター
+// MARK: - プロフィールアバター（URL対応版）
 struct ProfileAvatarView: View {
     let user: User?
+    var size: CGFloat = 50
     
     var body: some View {
+        Group {
+            if let avatarUrl = user?.avatarUrl, let url = URL(string: avatarUrl) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(width: size, height: size)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: size, height: size)
+                            .clipShape(Circle())
+                    case .failure:
+                        defaultAvatar
+                    @unknown default:
+                        defaultAvatar
+                    }
+                }
+            } else {
+                defaultAvatar
+            }
+        }
+    }
+    
+    private var defaultAvatar: some View {
         Circle()
             .fill(
                 LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
             )
-            .frame(width: 50, height: 50)
+            .frame(width: size, height: size)
             .overlay(
                 Text(String(user?.displayName.prefix(1) ?? "?"))
-                    .font(.headline)
+                    .font(.system(size: size * 0.4))
+                    .fontWeight(.semibold)
                     .foregroundColor(.white)
             )
     }
 }
 
-// MARK: - プロフィール編集シート
+// MARK: - プロフィール編集シート（アバターアップロード対応）
 struct EditProfileSheet: View {
     @EnvironmentObject var authService: AuthService
     @Environment(\.dismiss) var dismiss
@@ -191,8 +233,13 @@ struct EditProfileSheet: View {
     @State private var username: String = ""
     @State private var bio: String = ""
     @State private var isSaving = false
+    @State private var isUploadingAvatar = false
     @State private var showError = false
     @State private var errorMessage = ""
+    
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var selectedImageData: Data?
+    @State private var previewImage: UIImage?
     
     var body: some View {
         NavigationStack {
@@ -200,23 +247,105 @@ struct EditProfileSheet: View {
                 Section("プロフィール画像") {
                     HStack {
                         Spacer()
-                        ProfileAvatarView(user: authService.currentUser)
-                            .scaleEffect(1.6)
+                        
+                        ZStack {
+                            if let previewImage = previewImage {
+                                Image(uiImage: previewImage)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 100, height: 100)
+                                    .clipShape(Circle())
+                            } else {
+                                ProfileAvatarView(user: authService.currentUser, size: 100)
+                            }
+                            
+                            if isUploadingAvatar {
+                                Circle()
+                                    .fill(Color.black.opacity(0.5))
+                                    .frame(width: 100, height: 100)
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            }
+                            
+                            if !isUploadingAvatar {
+                                VStack {
+                                    Spacer()
+                                    HStack {
+                                        Spacer()
+                                        Circle()
+                                            .fill(Color.purple)
+                                            .frame(width: 32, height: 32)
+                                            .overlay(
+                                                Image(systemName: "camera.fill")
+                                                    .font(.system(size: 14))
+                                                    .foregroundColor(.white)
+                                            )
+                                            .shadow(radius: 2)
+                                    }
+                                }
+                                .frame(width: 100, height: 100)
+                            }
+                        }
+                        
                         Spacer()
                     }
                     .padding(.vertical, 16)
+                    .overlay(
+                        PhotosPicker(
+                            selection: $selectedPhotoItem,
+                            matching: .images,
+                            photoLibrary: .shared()
+                        ) {
+                            Color.clear
+                        }
+                        .disabled(isUploadingAvatar)
+                    )
+                    
+                    if authService.currentUser?.avatarUrl != nil || previewImage != nil {
+                        Button(role: .destructive) {
+                            removeAvatar()
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Text("プロフィール画像を削除")
+                                    .font(.subheadline)
+                                Spacer()
+                            }
+                        }
+                        .disabled(isUploadingAvatar)
+                    }
                 }
                 
                 Section("プロフィール情報") {
-                    TextField("表示名", text: $displayName)
-                    TextField("ユーザーID", text: $username)
-                        .autocapitalization(.none)
-                        .autocorrectionDisabled()
+                    HStack {
+                        Text("表示名")
+                            .foregroundColor(.secondary)
+                            .frame(width: 80, alignment: .leading)
+                        TextField("表示名", text: $displayName)
+                    }
+                    
+                    HStack {
+                        Text("ユーザーID")
+                            .foregroundColor(.secondary)
+                            .frame(width: 80, alignment: .leading)
+                        TextField("ユーザーID", text: $username)
+                            .autocapitalization(.none)
+                            .autocorrectionDisabled()
+                    }
                 }
                 
                 Section("自己紹介") {
                     TextEditor(text: $bio)
                         .frame(minHeight: 100)
+                }
+                
+                Section {
+                    HStack {
+                        Text("自己紹介: \(bio.count)/200文字")
+                            .font(.caption)
+                            .foregroundColor(bio.count > 200 ? .red : .secondary)
+                        Spacer()
+                    }
                 }
             }
             .navigationTitle("プロフィール編集")
@@ -224,19 +353,21 @@ struct EditProfileSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("キャンセル") { dismiss() }
+                        .disabled(isSaving || isUploadingAvatar)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("保存") {
                         saveProfile()
                     }
-                    .disabled(isSaving || displayName.isEmpty || username.isEmpty)
+                    .disabled(isSaving || isUploadingAvatar || displayName.isEmpty || username.isEmpty || bio.count > 200)
                     .fontWeight(.semibold)
                 }
             }
             .onAppear {
-                displayName = authService.currentUser?.displayName ?? ""
-                username = authService.currentUser?.username ?? ""
-                bio = authService.currentUser?.bio ?? ""
+                loadCurrentProfile()
+            }
+            .onChange(of: selectedPhotoItem) { _, newItem in
+                handlePhotoSelection(newItem)
             }
             .alert("エラー", isPresented: $showError) {
                 Button("OK") { }
@@ -246,18 +377,141 @@ struct EditProfileSheet: View {
         }
     }
     
-    private func saveProfile() {
-        isSaving = true
+    private func loadCurrentProfile() {
+        displayName = authService.currentUser?.displayName ?? ""
+        username = authService.currentUser?.username ?? ""
+        bio = authService.currentUser?.bio ?? ""
+    }
+    
+    private func handlePhotoSelection(_ item: PhotosPickerItem?) {
+        guard let item = item else { return }
         
         Task {
             do {
-                try await authService.updateProfile(
+                if let data = try await item.loadTransferable(type: Data.self) {
+                    await MainActor.run {
+                        selectedImageData = data
+                        previewImage = UIImage(data: data)
+                    }
+                    await uploadAvatar(data: data)
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "画像の読み込みに失敗しました"
+                    showError = true
+                }
+            }
+        }
+    }
+    
+    private func uploadAvatar(data: Data) async {
+        guard let userId = authService.currentUser?.id else { return }
+        
+        await MainActor.run {
+            isUploadingAvatar = true
+        }
+        
+        do {
+            let compressedData = compressImage(data: data, maxSize: 500 * 1024)
+            let avatarUrl = try await UserService.shared.uploadAvatar(userId: userId, imageData: compressedData)
+            
+            await MainActor.run {
+                authService.currentUser?.avatarUrl = avatarUrl
+                isUploadingAvatar = false
+                
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = "画像のアップロードに失敗しました: \(error.localizedDescription)"
+                showError = true
+                isUploadingAvatar = false
+                previewImage = nil
+                selectedImageData = nil
+            }
+        }
+    }
+    
+    private func compressImage(data: Data, maxSize: Int) -> Data {
+        guard let image = UIImage(data: data) else { return data }
+        
+        var compression: CGFloat = 1.0
+        var compressedData = image.jpegData(compressionQuality: compression) ?? data
+        
+        while compressedData.count > maxSize && compression > 0.1 {
+            compression -= 0.1
+            compressedData = image.jpegData(compressionQuality: compression) ?? data
+        }
+        
+        if compressedData.count > maxSize {
+            let scale = sqrt(CGFloat(maxSize) / CGFloat(compressedData.count))
+            let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+            
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+            
+            compressedData = resizedImage?.jpegData(compressionQuality: 0.8) ?? compressedData
+        }
+        
+        print("📦 [EditProfile] 画像圧縮: \(data.count) → \(compressedData.count) bytes")
+        return compressedData
+    }
+    
+    private func removeAvatar() {
+        previewImage = nil
+        selectedImageData = nil
+        
+        Task {
+            guard let userId = authService.currentUser?.id else { return }
+            
+            do {
+                try await UserService.shared.updateProfile(
+                    userId: userId,
                     displayName: displayName,
                     username: username,
                     bio: bio.isEmpty ? nil : bio
                 )
                 
                 await MainActor.run {
+                    authService.currentUser?.avatarUrl = nil
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "画像の削除に失敗しました"
+                    showError = true
+                }
+            }
+        }
+    }
+    
+    private func saveProfile() {
+        isSaving = true
+        
+        Task {
+            guard let userId = authService.currentUser?.id else {
+                await MainActor.run {
+                    errorMessage = "ユーザー情報が見つかりません"
+                    showError = true
+                    isSaving = false
+                }
+                return
+            }
+            
+            do {
+                try await UserService.shared.updateProfile(
+                    userId: userId,
+                    displayName: displayName,
+                    username: username,
+                    bio: bio.isEmpty ? nil : bio
+                )
+                
+                await MainActor.run {
+                    authService.currentUser?.displayName = displayName
+                    authService.currentUser?.username = username
+                    authService.currentUser?.bio = bio.isEmpty ? nil : bio
                     isSaving = false
                     dismiss()
                 }
@@ -272,56 +526,284 @@ struct EditProfileSheet: View {
     }
 }
 
-// MARK: - プレースホルダービュー
+// MARK: - ブックマーク一覧画面
+struct BookmarksListView: View {
+    @EnvironmentObject var authService: AuthService
+    @State private var bookmarkedPosts: [Post] = []
+    @State private var isLoading = true
+    
+    var body: some View {
+        Group {
+            if isLoading {
+                VStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+            } else if bookmarkedPosts.isEmpty {
+                VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "bookmark")
+                        .font(.system(size: 50))
+                        .foregroundColor(.secondary)
+                    Text("ブックマークした投稿はありません")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    Text("気になる投稿をブックマークすると\nここに表示されます")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .padding()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(bookmarkedPosts) { post in
+                            NavigationLink(destination: PostDetailView(post: post).environmentObject(authService)) {
+                                BookmarkPostCard(post: post)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+        .navigationTitle("ブックマーク")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await loadBookmarks()
+        }
+        .refreshable {
+            await loadBookmarks()
+        }
+    }
+    
+    private func loadBookmarks() async {
+        guard let userId = authService.currentUser?.id else {
+            isLoading = false
+            return
+        }
+        
+        do {
+            bookmarkedPosts = try await InteractionService.shared.fetchBookmarks(userId: userId)
+        } catch {
+            print("🔴 [BookmarksListView] エラー: \(error)")
+        }
+        isLoading = false
+    }
+}
+
+// MARK: - ブックマーク投稿カード
+struct BookmarkPostCard: View {
+    let post: Post
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                ProfileAvatarView(user: post.user, size: 36)
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(post.user?.displayName ?? "ユーザー")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    Text("@\(post.user?.username ?? "unknown")")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "bookmark.fill")
+                    .foregroundColor(.purple)
+            }
+            
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(
+                        LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .frame(width: 10, height: 10)
+                
+                Text(post.centerNodeText)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+            }
+            
+            HStack(spacing: 16) {
+                HStack(spacing: 4) {
+                    Image(systemName: "heart")
+                        .font(.caption)
+                    Text("\(post.likeCount)")
+                        .font(.caption)
+                }
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "bubble.right")
+                        .font(.caption)
+                    Text("\(post.commentCount)")
+                        .font(.caption)
+                }
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "point.3.connected.trianglepath.dotted")
+                        .font(.caption)
+                    Text("\(post.nodes?.count ?? 0)")
+                        .font(.caption)
+                }
+            }
+            .foregroundColor(.secondary)
+        }
+        .padding(14)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - プライバシー設定
 struct PrivacySettingsView: View {
+    @EnvironmentObject var authService: AuthService
+    @State private var isPrivate = false
+    @State private var dmPermission = 0
+    
     var body: some View {
         List {
-            Toggle("非公開アカウント", isOn: .constant(false))
-            Picker("DM受信設定", selection: .constant(0)) {
+            Toggle("非公開アカウント", isOn: $isPrivate)
+            
+            Picker("DM受信設定", selection: $dmPermission) {
                 Text("全員").tag(0)
                 Text("フォロワーのみ").tag(1)
                 Text("受け取らない").tag(2)
             }
         }
         .navigationTitle("プライバシー設定")
+        .onAppear {
+            isPrivate = authService.currentUser?.isPrivate ?? false
+            switch authService.currentUser?.dmPermission {
+            case "followers": dmPermission = 1
+            case "none": dmPermission = 2
+            default: dmPermission = 0
+            }
+        }
     }
 }
 
+// MARK: - 通知設定
 struct NotificationSettingsView: View {
+    @State private var likeNotification = true
+    @State private var commentNotification = true
+    @State private var followNotification = true
+    @State private var dmNotification = true
+    
     var body: some View {
         List {
-            Toggle("いいね通知", isOn: .constant(true))
-            Toggle("コメント通知", isOn: .constant(true))
-            Toggle("フォロー通知", isOn: .constant(true))
-            Toggle("DM通知", isOn: .constant(true))
+            Toggle("いいね通知", isOn: $likeNotification)
+            Toggle("コメント通知", isOn: $commentNotification)
+            Toggle("フォロー通知", isOn: $followNotification)
+            Toggle("DM通知", isOn: $dmNotification)
         }
         .navigationTitle("通知設定")
     }
 }
 
+// MARK: - ブロック中のユーザー
 struct BlockedUsersView: View {
+    @EnvironmentObject var authService: AuthService
+    @State private var blockedUsers: [User] = []
+    @State private var isLoading = true
+    
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "person.crop.circle.badge.minus")
-                .font(.system(size: 50))
-                .foregroundColor(.secondary)
-            Text("ブロック中のユーザーはいません")
-                .foregroundColor(.secondary)
+        Group {
+            if isLoading {
+                ProgressView()
+            } else if blockedUsers.isEmpty {
+                VStack(spacing: 16) {
+                    Image(systemName: "person.crop.circle.badge.minus")
+                        .font(.system(size: 50))
+                        .foregroundColor(.secondary)
+                    Text("ブロック中のユーザーはいません")
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                List(blockedUsers) { user in
+                    HStack {
+                        ProfileAvatarView(user: user, size: 40)
+                        
+                        VStack(alignment: .leading) {
+                            Text(user.displayName)
+                                .font(.headline)
+                            Text("@\(user.username)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Button("解除") {
+                            unblockUser(user)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.purple)
+                    }
+                }
+            }
         }
         .navigationTitle("ブロック中のユーザー")
+        .task {
+            await loadBlockedUsers()
+        }
+    }
+    
+    private func loadBlockedUsers() async {
+        guard let userId = authService.currentUser?.id else {
+            isLoading = false
+            return
+        }
+        
+        do {
+            blockedUsers = try await BlockReportService.shared.fetchBlockedUsers(blockerId: userId)
+        } catch {
+            print("🔴 [BlockedUsers] 取得エラー: \(error)")
+        }
+        isLoading = false
+    }
+    
+    private func unblockUser(_ user: User) {
+        guard let currentUserId = authService.currentUser?.id else { return }
+        
+        Task {
+            do {
+                try await BlockReportService.shared.unblockUser(blockerId: currentUserId, blockedId: user.id)
+                await MainActor.run {
+                    blockedUsers.removeAll { $0.id == user.id }
+                }
+            } catch {
+                print("🔴 [BlockedUsers] ブロック解除エラー: \(error)")
+            }
+        }
     }
 }
 
+// MARK: - ヘルプ
 struct HelpView: View {
     var body: some View {
         List {
-            NavigationLink("よくある質問") { Text("FAQ") }
-            NavigationLink("お問い合わせ") { Text("Contact") }
+            NavigationLink("よくある質問") {
+                Text("FAQ")
+                    .navigationTitle("よくある質問")
+            }
+            NavigationLink("お問い合わせ") {
+                Text("Contact")
+                    .navigationTitle("お問い合わせ")
+            }
         }
         .navigationTitle("ヘルプ")
     }
 }
 
+// MARK: - 利用規約
 struct TermsView: View {
     var body: some View {
         ScrollView {
@@ -332,6 +814,7 @@ struct TermsView: View {
     }
 }
 
+// MARK: - プライバシーポリシー
 struct PrivacyPolicyView: View {
     var body: some View {
         ScrollView {

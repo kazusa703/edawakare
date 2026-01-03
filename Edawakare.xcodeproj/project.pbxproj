@@ -27,6 +27,7 @@
 		ACD313D82F0461EF00E076C4 /* Authservice.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313D72F0461EF00E076C4 /* Authservice.swift */; };
 		ACD313DC2F04625D00E076C4 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313DB2F04625D00E076C4 /* SupabaseClient.swift */; };
 		ACD314002F04C42600E076C4 /* FeedViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313FF2F04C42600E076C4 /* FeedViewModel.swift */; };
+		ACD314422F08BEEA00E076C4 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314412F08BEEA00E076C4 /* Constants.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +46,7 @@
 		ACD313D72F0461EF00E076C4 /* Authservice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Authservice.swift; sourceTree = "<group>"; };
 		ACD313DB2F04625D00E076C4 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		ACD313FF2F04C42600E076C4 /* FeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedViewModel.swift; sourceTree = "<group>"; };
+		ACD314412F08BEEA00E076C4 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -116,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				ACD313892F045BAD00E076C4 /* EdawakareApp.swift */,
+				ACD314412F08BEEA00E076C4 /* Constants.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -253,6 +256,7 @@
 				ACD313D82F0461EF00E076C4 /* Authservice.swift in Sources */,
 				ACD313962F045BC400E076C4 /* Node.swift in Sources */,
 				ACD3139E2F045BCF00E076C4 /* MockData.swift in Sources */,
+				ACD314422F08BEEA00E076C4 /* Constants.swift in Sources */,
 				ACD313D22F0461D500E076C4 /* PostService.swift in Sources */,
 				ACD313D42F0461DD00E076C4 /* NotificationMessageService.swift in Sources */,
 				ACD313972F045BC400E076C4 /* OtherModels.swift in Sources */,

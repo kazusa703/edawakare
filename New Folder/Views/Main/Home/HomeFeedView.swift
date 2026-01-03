@@ -91,6 +91,27 @@ struct HomeFeedView: View {
     }
 }
 
+// HomeFeedView.swift に追加
+
+.onReceive(NotificationCenter.default.publisher(for: .postCreated)) { _ in
+    print("📬 [HomeFeedView] 新規投稿通知を受信")
+    Task {
+        await viewModel.fetchPosts()
+        if let userId = authService.currentUser?.id {
+            await viewModel.fetchFollowingPosts(userId: userId)
+        }
+    }
+}
+.onReceive(NotificationCenter.default.publisher(for: .postDeleted)) { _ in
+    print("📬 [HomeFeedView] 投稿削除通知を受信")
+    Task {
+        await viewModel.fetchPosts()
+        if let userId = authService.currentUser?.id {
+            await viewModel.fetchFollowingPosts(userId: userId)
+        }
+    }
+}
+
 // MARK: - 空のフィードView
 struct EmptyFeedView: View {
     let selectedTab: Int

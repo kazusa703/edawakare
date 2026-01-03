@@ -258,6 +258,44 @@ class PostService {
         }
     }
     
+    // PostService.swift に追加
+
+    // MARK: - 人気のノード（中心テーマ）を取得
+    func fetchPopularNodes(limit: Int = 10) async throws -> [String] {
+        print("🟡 [人気ノード] 開始")
+        
+        struct PopularPost: Decodable {
+            let center_node_text: String
+            let like_count: Int
+        }
+        
+        do {
+            let posts: [PopularPost] = try await SupabaseClient.shared.client
+                .from("posts")
+                .select("center_node_text, like_count")
+                .eq("is_deleted", value: false)
+                .order("like_count", ascending: false)
+                .limit(limit)
+                .execute()
+                .value
+            
+            // 重複を除去してユニークなテーマを返す
+            var seen = Set<String>()
+            let uniqueNodes = posts.compactMap { post -> String? in
+                let text = post.center_node_text
+                if seen.contains(text) { return nil }
+                seen.insert(text)
+                return text
+            }
+            
+            print("✅ [人気ノード] 成功 - 件数: \(uniqueNodes.count)")
+            return uniqueNodes
+        } catch {
+            print("🔴 [人気ノード] エラー: \(error)")
+            throw error
+        }
+    }
+    
     // MARK: - 投稿削除（論理削除）
     func deletePost(postId: UUID) async throws {
         print("🟡 [投稿削除] 開始 - postId: \(postId)")

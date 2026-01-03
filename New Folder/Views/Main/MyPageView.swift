@@ -6,12 +6,11 @@ struct MyPageView: View {
     @EnvironmentObject var authService: AuthService
     @StateObject private var viewModel = FeedViewModel()
     @State private var userPosts: [Post] = []
-    @State private var bookmarkedPosts: [Post] = []
-    @State private var selectedTab = 0
     @State private var showSettings = false
     @State private var isLoading = false
     @State private var followersCount = 0
     @State private var followingCount = 0
+    @State private var hasLoaded = false
     
     var body: some View {
         NavigationStack {
@@ -23,29 +22,32 @@ struct MyPageView: View {
                         postsCount: userPosts.count,
                         branchesCount: authService.currentUser?.totalBranches ?? 0,
                         followersCount: followersCount,
-                        followingCount: followingCount
+                        followingCount: followingCount,
+                        userId: authService.currentUser?.id  // 追加
                     )
                     .padding(.vertical, 16)
                     
                     Divider()
                     
-                    Picker("投稿タイプ", selection: $selectedTab) {
-                        Text("投稿").tag(0)
-                        Text("ブックマーク").tag(1)
+                    // 投稿一覧ヘッダー
+                    HStack {
+                        Text("投稿")
+                            .font(.headline)
+                        Spacer()
                     }
-                    .pickerStyle(.segmented)
-                    .padding()
+                    .padding(.horizontal)
+                    .padding(.top, 16)
                     
                     if isLoading {
                         ProgressView()
                             .padding(.top, 40)
-                    } else if currentPosts.isEmpty {
+                    } else if userPosts.isEmpty {
                         EmptyPostsView()
                     } else {
                         LazyVStack(spacing: 16) {
                             ForEach(sortedPosts) { post in
                                 NavigationLink(destination: MyPostDetailView(post: post, onUpdate: { await loadData() })) {
-                                    PostThumbnailView(post: post, showPinBadge: selectedTab == 0)
+                                    PostThumbnailView(post: post, showPinBadge: true)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
@@ -63,37 +65,31 @@ struct MyPageView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showSettings) {
+            .sheet(isPresented: $showSettings, onDismiss: {
+                Task {
+                    await loadData()
+                }
+            }) {
                 SettingsView()
                     .environmentObject(authService)
             }
-            .task {
-                await loadData()
+            .onAppear {
+                if !hasLoaded {
+                    hasLoaded = true
+                    Task {
+                        await loadData()
+                    }
+                }
             }
             .refreshable {
                 await loadData()
             }
-            .onChange(of: selectedTab) { _, _ in
-                Task {
-                    if selectedTab == 1 {
-                        await loadBookmarks()
-                    }
-                }
-            }
         }
-    }
-    
-    private var currentPosts: [Post] {
-        selectedTab == 0 ? userPosts : bookmarkedPosts
     }
     
     // ピン留め投稿を上に表示
     private var sortedPosts: [Post] {
-        if selectedTab == 0 {
-            return userPosts.sorted { $0.isPinned && !$1.isPinned }
-        } else {
-            return bookmarkedPosts
-        }
+        userPosts.sorted { $0.isPinned && !$1.isPinned }
     }
     
     private func loadData() async {
@@ -103,60 +99,48 @@ struct MyPageView: View {
         }
         
         print("🟡 [MyPage] loadData開始 - userId: \(userId)")
-        isLoading = true
         
-        userPosts = await viewModel.fetchUserPosts(userId: userId)
-        print("✅ [MyPage] 投稿取得完了 - 件数: \(userPosts.count)")
+        await MainActor.run {
+            isLoading = true
+        }
         
-        await loadFollowCounts(userId: userId)
+        async let postsTask = viewModel.fetchUserPosts(userId: userId)
+        async let countsTask = fetchFollowCounts(userId: userId)
         
-        isLoading = false
+        let posts = await postsTask
+        let counts = await countsTask
+        
+        await MainActor.run {
+            userPosts = posts
+            followersCount = counts.followers
+            followingCount = counts.following
+            isLoading = false
+        }
+        
+        print("✅ [MyPage] 投稿取得完了 - 件数: \(posts.count)")
     }
     
-    private func loadFollowCounts(userId: UUID) async {
+    private func fetchFollowCounts(userId: UUID) async -> (followers: Int, following: Int) {
         print("🟡 [MyPage] フォロー数取得開始")
         
         do {
             let counts = try await InteractionService.shared.getFollowCounts(userId: userId)
-            followersCount = counts.followers
-            followingCount = counts.following
-            print("✅ [MyPage] フォロー数取得完了 - フォロワー: \(followersCount), フォロー中: \(followingCount)")
+            print("✅ [MyPage] フォロー数取得完了 - フォロワー: \(counts.followers), フォロー中: \(counts.following)")
+            return counts
         } catch {
             print("🔴 [MyPage] フォロー数取得エラー: \(error)")
-        }
-    }
-    
-    private func loadBookmarks() async {
-        guard let userId = authService.currentUser?.id else { return }
-        
-        print("🟡 [MyPage] ブックマーク取得開始")
-        
-        do {
-            bookmarkedPosts = try await InteractionService.shared.fetchBookmarks(userId: userId)
-            print("✅ [MyPage] ブックマーク取得完了 - 件数: \(bookmarkedPosts.count)")
-        } catch {
-            print("🔴 [MyPage] ブックマーク取得エラー: \(error)")
+            return (0, 0)
         }
     }
 }
 
-// MARK: - プロフィールヘッダー
+// MARK: - プロフィールヘッダー（アバター対応版）
 struct ProfileHeaderView: View {
     let user: User?
     
     var body: some View {
         VStack(spacing: 12) {
-            Circle()
-                .fill(
-                    LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .frame(width: 80, height: 80)
-                .overlay(
-                    Text(String(user?.displayName.prefix(1) ?? "?"))
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                )
+            ProfileAvatarView(user: user, size: 80)
             
             Text(user?.displayName ?? "ユーザー")
                 .font(.title2)
@@ -178,19 +162,57 @@ struct ProfileHeaderView: View {
     }
 }
 
-// MARK: - 統計View
+// MARK: - 統計View（タップ可能版）
 struct StatsView: View {
     let postsCount: Int
     let branchesCount: Int
     let followersCount: Int
     let followingCount: Int
+    let userId: UUID?
+    
+    @State private var showFollowers = false
+    @State private var showFollowing = false
     
     var body: some View {
         HStack(spacing: 32) {
             StatItem(value: postsCount, label: "投稿")
             StatItem(value: branchesCount, label: "枝")
-            StatItem(value: followersCount, label: "フォロワー")
-            StatItem(value: followingCount, label: "フォロー中")
+            
+            // フォロワー（タップ可能）
+            Button(action: { showFollowers = true }) {
+                VStack(spacing: 4) {
+                    Text("\(followersCount)")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    Text("フォロワー")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .foregroundColor(.primary)
+            
+            // フォロー中（タップ可能）
+            Button(action: { showFollowing = true }) {
+                VStack(spacing: 4) {
+                    Text("\(followingCount)")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    Text("フォロー中")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .foregroundColor(.primary)
+        }
+        .sheet(isPresented: $showFollowers) {
+            if let userId = userId {
+                FollowListView(userId: userId, listType: .followers)
+            }
+        }
+        .sheet(isPresented: $showFollowing) {
+            if let userId = userId {
+                FollowListView(userId: userId, listType: .following)
+            }
         }
     }
 }
@@ -210,7 +232,6 @@ struct StatItem: View {
         }
     }
 }
-
 // MARK: - 空の投稿View
 struct EmptyPostsView: View {
     var body: some View {

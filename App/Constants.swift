@@ -1,8 +1,9 @@
-//
-//  Constants.swift
-//  Edawakare
-//
-//  Created by 今井一颯 on 2026/01/03.
-//
+// App/Constants.swift
 
 import Foundation
+
+extension Notification.Name {
+    static let postCreated = Notification.Name("postCreated")
+    static let postDeleted = Notification.Name("postDeleted")
+    static let postUpdated = Notification.Name("postUpdated")
+}

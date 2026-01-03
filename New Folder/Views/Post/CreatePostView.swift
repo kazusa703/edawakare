@@ -295,6 +295,10 @@ struct CreatePostView: View {
                 
                 await MainActor.run {
                     isPosting = false
+                    
+                    // ✅ 投稿作成の通知を発火（この1行を追加）
+                    NotificationCenter.default.post(name: .postCreated, object: nil)
+                    
                     dismiss()
                 }
                 
