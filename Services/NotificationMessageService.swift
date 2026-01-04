@@ -13,9 +13,10 @@ class NotificationService {
         do {
             let notifications: [AppNotification] = try await SupabaseClient.shared.client
                 .from("notifications")
-                .select("*, actor:users!actor_id(*), post:posts(*)")
+                .select("*, actor:users!actor_id(*)")
                 .eq("user_id", value: userId.uuidString)
                 .order("created_at", ascending: false)
+                .limit(100)
                 .execute()
                 .value
             
@@ -27,14 +28,14 @@ class NotificationService {
         }
     }
     
-    func markAllAsRead(userId: UUID) async throws {
-        print("🟡 [通知既読] 開始 - userId: \(userId)")
+    func markAsRead(notificationId: UUID) async throws {
+        print("🟡 [通知既読] 開始 - notificationId: \(notificationId)")
         
         do {
             try await SupabaseClient.shared.client
                 .from("notifications")
                 .update(["is_read": true])
-                .eq("user_id", value: userId.uuidString)
+                .eq("id", value: notificationId.uuidString)
                 .execute()
             
             print("✅ [通知既読] 成功")
@@ -44,13 +45,35 @@ class NotificationService {
         }
     }
     
+    func markAllAsRead(userId: UUID) async throws {
+        print("🟡 [全通知既読] 開始 - userId: \(userId)")
+        
+        do {
+            try await SupabaseClient.shared.client
+                .from("notifications")
+                .update(["is_read": true])
+                .eq("user_id", value: userId.uuidString)
+                .eq("is_read", value: false)
+                .execute()
+            
+            print("✅ [全通知既読] 成功")
+        } catch {
+            print("🔴 [全通知既読] エラー: \(error)")
+            throw error
+        }
+    }
+    
     func getUnreadCount(userId: UUID) async throws -> Int {
         print("🟡 [未読数取得] 開始 - userId: \(userId)")
         
+        struct CountOnly: Decodable {
+            let id: UUID
+        }
+        
         do {
-            let notifications: [AppNotification] = try await SupabaseClient.shared.client
+            let notifications: [CountOnly] = try await SupabaseClient.shared.client
                 .from("notifications")
-                .select()
+                .select("id")
                 .eq("user_id", value: userId.uuidString)
                 .eq("is_read", value: false)
                 .execute()
@@ -61,6 +84,29 @@ class NotificationService {
         } catch {
             print("🔴 [未読数取得] エラー: \(error)")
             throw error
+        }
+    }
+    
+    // MARK: - 30日経過した通知を削除
+    func deleteOldNotifications(userId: UUID) async throws {
+        print("🟡 [古い通知削除] 開始")
+        
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        let formatter = ISO8601DateFormatter()
+        let dateString = formatter.string(from: thirtyDaysAgo)
+        
+        do {
+            try await SupabaseClient.shared.client
+                .from("notifications")
+                .delete()
+                .eq("user_id", value: userId.uuidString)
+                .lt("created_at", value: dateString)
+                .execute()
+            
+            print("✅ [古い通知削除] 成功")
+        } catch {
+            print("🔴 [古い通知削除] エラー: \(error)")
+            // エラーは無視（削除できなくても問題ない）
         }
     }
 }
@@ -87,7 +133,6 @@ class MessageService {
             var result: [Conversation] = []
             for var conv in conversations {
                 let otherId = conv.user1Id == userId ? conv.user2Id : conv.user1Id
-                print("🟡 [会話一覧] 相手ユーザー取得 - otherId: \(otherId)")
                 
                 do {
                     conv.otherUser = try await SupabaseClient.shared.client
@@ -97,14 +142,12 @@ class MessageService {
                         .single()
                         .execute()
                         .value
-                    print("✅ [会話一覧] 相手ユーザー取得成功")
                 } catch {
                     print("🔴 [会話一覧] 相手ユーザー取得エラー: \(error)")
                 }
                 result.append(conv)
             }
             
-            print("✅ [会話一覧] 完了 - 件数: \(result.count)")
             return result
         } catch {
             print("🔴 [会話一覧] エラー: \(error)")
@@ -132,9 +175,8 @@ class MessageService {
         }
     }
 
-    func sendMessage(conversationId: UUID, senderId: UUID, content: String) async throws -> DMMessage {
-        print("🟡 [メッセージ送信] 開始 - conversationId: \(conversationId), senderId: \(senderId)")
-        print("🟡 [メッセージ送信] 内容: \(content)")
+    func sendMessage(conversationId: UUID, senderId: UUID, receiverId: UUID, content: String) async throws -> DMMessage {
+        print("🟡 [メッセージ送信] 開始")
         
         struct MessageInsert: Encodable {
             let conversation_id: String
@@ -157,40 +199,64 @@ class MessageService {
                 .execute()
                 .value
             
-            print("✅ [メッセージ送信] 成功 - messageId: \(message.id)")
-            
             // 会話の最終メッセージ時刻を更新
-            print("🟡 [メッセージ送信] 会話更新中...")
             try await SupabaseClient.shared.client
                 .from("conversations")
                 .update(["last_message_at": ISO8601DateFormatter().string(from: Date())])
                 .eq("id", value: conversationId.uuidString)
                 .execute()
             
-            print("✅ [メッセージ送信] 会話更新成功")
+            // ✅ DM通知を作成
+            try await createDMNotification(receiverId: receiverId, senderId: senderId)
+            
+            print("✅ [メッセージ送信] 成功")
             return message
         } catch {
             print("🔴 [メッセージ送信] エラー: \(error)")
             throw error
         }
     }
-
-    func deleteConversation(conversationId: UUID) async throws {
-        print("🟡 [会話削除] 開始 - conversationId: \(conversationId)")
+    
+    // DM通知を作成
+    private func createDMNotification(receiverId: UUID, senderId: UUID) async throws {
+        // 自分自身には通知しない
+        guard receiverId != senderId else { return }
+        
+        print("🟡 [DM通知] 開始")
+        
+        struct NotificationInsert: Encodable {
+            let user_id: String
+            let actor_id: String
+            let type: String
+        }
+        
+        let notification = NotificationInsert(
+            user_id: receiverId.uuidString,
+            actor_id: senderId.uuidString,
+            type: "dm"
+        )
         
         do {
-            // まずメッセージを削除
-            print("🟡 [会話削除] メッセージ削除中...")
+            try await SupabaseClient.shared.client
+                .from("notifications")
+                .insert(notification)
+                .execute()
+            print("✅ [DM通知] 成功")
+        } catch {
+            print("🔴 [DM通知] エラー: \(error)")
+        }
+    }
+
+    func deleteConversation(conversationId: UUID) async throws {
+        print("🟡 [会話削除] 開始")
+        
+        do {
             try await SupabaseClient.shared.client
                 .from("messages")
                 .delete()
                 .eq("conversation_id", value: conversationId.uuidString)
                 .execute()
             
-            print("✅ [会話削除] メッセージ削除成功")
-            
-            // 会話を削除
-            print("🟡 [会話削除] 会話削除中...")
             try await SupabaseClient.shared.client
                 .from("conversations")
                 .delete()
@@ -205,8 +271,6 @@ class MessageService {
     }
     
     func togglePin(conversationId: UUID, userId: UUID, isPinned: Bool) async throws {
-        print("🟡 [ピン切替] 開始 - conversationId: \(conversationId), isPinned: \(isPinned)")
-        
         do {
             let conversation: Conversation = try await SupabaseClient.shared.client
                 .from("conversations")
@@ -217,15 +281,12 @@ class MessageService {
                 .value
             
             let column = conversation.user1Id == userId ? "is_pinned_user1" : "is_pinned_user2"
-            print("🟡 [ピン切替] 更新カラム: \(column)")
             
             try await SupabaseClient.shared.client
                 .from("conversations")
                 .update([column: isPinned])
                 .eq("id", value: conversationId.uuidString)
                 .execute()
-            
-            print("✅ [ピン切替] 成功")
         } catch {
             print("🔴 [ピン切替] エラー: \(error)")
             throw error
@@ -233,8 +294,6 @@ class MessageService {
     }
     
     func markAsRead(conversationId: UUID, userId: UUID) async throws {
-        print("🟡 [既読処理] 開始 - conversationId: \(conversationId)")
-        
         do {
             try await SupabaseClient.shared.client
                 .from("messages")
@@ -242,8 +301,6 @@ class MessageService {
                 .eq("conversation_id", value: conversationId.uuidString)
                 .neq("sender_id", value: userId.uuidString)
                 .execute()
-            
-            print("✅ [既読処理] 成功")
         } catch {
             print("🔴 [既読処理] エラー: \(error)")
             throw error
@@ -251,11 +308,7 @@ class MessageService {
     }
     
     func createConversation(user1Id: UUID, user2Id: UUID) async throws -> Conversation {
-        print("🟡 [会話作成] 開始 - user1: \(user1Id), user2: \(user2Id)")
-        
         do {
-            // 既存の会話があるか確認
-            print("🟡 [会話作成] 既存会話を確認中...")
             let existing: [Conversation] = try await SupabaseClient.shared.client
                 .from("conversations")
                 .select()
@@ -264,12 +317,9 @@ class MessageService {
                 .value
             
             if let existingConv = existing.first {
-                print("✅ [会話作成] 既存の会話を返却 - id: \(existingConv.id)")
                 return existingConv
             }
             
-            // 新規作成
-            print("🟡 [会話作成] 新規作成中...")
             struct ConversationInsert: Encodable {
                 let user1_id: String
                 let user2_id: String
@@ -283,7 +333,6 @@ class MessageService {
                 .execute()
                 .value
             
-            print("✅ [会話作成] 新規作成成功 - id: \(conversation.id)")
             return conversation
         } catch {
             print("🔴 [会話作成] エラー: \(error)")

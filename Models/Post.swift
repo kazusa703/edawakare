@@ -12,6 +12,7 @@ struct Post: Identifiable, Codable {
     var isPinned: Bool
     var visibility: String  // "public" or "followers_only"
     var commentsEnabled: Bool
+    var allowSave: Bool
     let createdAt: Date
     let updatedAt: Date
     
@@ -19,6 +20,12 @@ struct Post: Identifiable, Codable {
     var user: User?
     var nodes: [Node]?
     var connections: [NodeConnection]?
+    
+    // isPublic 計算プロパティ（追加）
+    var isPublic: Bool {
+        get { visibility == "public" }
+        set { visibility = newValue ? "public" : "followers_only" }
+    }
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -28,6 +35,7 @@ struct Post: Identifiable, Codable {
         case commentCount = "comment_count"
         case isDeleted = "is_deleted"
         case isPinned = "is_pinned"
+        case allowSave = "allow_save"
         case visibility
         case commentsEnabled = "comments_enabled"
         case createdAt = "created_at"
@@ -46,10 +54,10 @@ struct Post: Identifiable, Codable {
         commentCount = try container.decodeIfPresent(Int.self, forKey: .commentCount) ?? 0
         isDeleted = try container.decodeIfPresent(Bool.self, forKey: .isDeleted) ?? false
         isPinned = try container.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        allowSave = try container.decodeIfPresent(Bool.self, forKey: .allowSave) ?? true
         visibility = try container.decodeIfPresent(String.self, forKey: .visibility) ?? "public"
         commentsEnabled = try container.decodeIfPresent(Bool.self, forKey: .commentsEnabled) ?? true
         
-        // 日付のデコード
         if let dateString = try? container.decode(String.self, forKey: .createdAt) {
             createdAt = ISO8601DateFormatter().date(from: dateString) ?? Date()
         } else {
@@ -78,10 +86,27 @@ struct Post: Identifiable, Codable {
         try container.encode(isPinned, forKey: .isPinned)
         try container.encode(visibility, forKey: .visibility)
         try container.encode(commentsEnabled, forKey: .commentsEnabled)
+        try container.encode(allowSave, forKey: .allowSave)
     }
     
-    // イニシャライザ（ローカル作成用）
-    init(id: UUID = UUID(), userId: UUID, centerNodeText: String, likeCount: Int = 0, commentCount: Int = 0, isDeleted: Bool = false, isPinned: Bool = false, visibility: String = "public", commentsEnabled: Bool = true, createdAt: Date = Date(), updatedAt: Date = Date(), user: User? = nil, nodes: [Node]? = nil, connections: [NodeConnection]? = nil) {
+    // イニシャライザ（allowSave パラメータを追加）
+    init(
+        id: UUID = UUID(),
+        userId: UUID,
+        centerNodeText: String,
+        likeCount: Int = 0,
+        commentCount: Int = 0,
+        isDeleted: Bool = false,
+        isPinned: Bool = false,
+        visibility: String = "public",
+        commentsEnabled: Bool = true,
+        allowSave: Bool = true,  // ← 追加
+        createdAt: Date = Date(),
+        updatedAt: Date = Date(),
+        user: User? = nil,
+        nodes: [Node]? = nil,
+        connections: [NodeConnection]? = nil
+    ) {
         self.id = id
         self.userId = userId
         self.centerNodeText = centerNodeText
@@ -91,6 +116,7 @@ struct Post: Identifiable, Codable {
         self.isPinned = isPinned
         self.visibility = visibility
         self.commentsEnabled = commentsEnabled
+        self.allowSave = allowSave  // ← これでエラー解消
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.user = user

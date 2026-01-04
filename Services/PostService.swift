@@ -257,8 +257,23 @@ class PostService {
             throw error
         }
     }
-    
-    // PostService.swift に追加
+    // MARK: - 保存許可設定を更新
+    func updateAllowSave(postId: UUID, allowSave: Bool) async throws {
+        print("🟡 [保存許可更新] 開始 - postId: \(postId), allowSave: \(allowSave)")
+        
+        do {
+            try await SupabaseClient.shared.client
+                .from("posts")
+                .update(["allow_save": allowSave])
+                .eq("id", value: postId.uuidString)
+                .execute()
+            
+            print("✅ [保存許可更新] 成功")
+        } catch {
+            print("🔴 [保存許可更新] エラー: \(error)")
+            throw error
+        }
+    }
 
     // MARK: - 人気のノード（中心テーマ）を取得
     func fetchPopularNodes(limit: Int = 10) async throws -> [String] {

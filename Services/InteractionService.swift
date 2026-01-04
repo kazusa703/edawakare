@@ -21,6 +21,7 @@ class InteractionService {
                 .insert(like)
                 .execute()
             
+            
             print("✅ [いいね] 成功")
             
             // 通知を作成
@@ -95,6 +96,8 @@ class InteractionService {
         }
     }
     
+    // InteractionService.swift の addComment 関数を修正
+
     func addComment(userId: UUID, postId: UUID, content: String, parentCommentId: UUID? = nil) async throws -> Comment {
         print("🟡 [コメント投稿] 開始 - userId: \(userId), parentId: \(String(describing: parentCommentId))")
         
@@ -123,10 +126,24 @@ class InteractionService {
             
             print("✅ [コメント投稿] 成功")
             
-            // 通知を作成（返信の場合は返信先ユーザーに、そうでなければ投稿者に）
+            // 投稿者のIDを取得
+            struct PostOwner: Decodable { let user_id: UUID }
+            let postOwner: PostOwner = try await SupabaseClient.shared.client
+                .from("posts")
+                .select("user_id")
+                .eq("id", value: postId.uuidString)
+                .single()
+                .execute()
+                .value
+            
             if let parentId = parentCommentId {
                 // 返信通知（親コメントのユーザーに）
                 try await createReplyNotification(parentCommentId: parentId, actorId: userId, postId: postId)
+                
+                // ✅ 投稿者が返信した場合、親コメントのユーザーに「投稿者返信」通知
+                if userId == postOwner.user_id {
+                    try await createOwnerReplyNotification(parentCommentId: parentId, actorId: userId, postId: postId)
+                }
             } else {
                 // 通常のコメント通知
                 try await createNotification(postId: postId, actorId: userId, type: "comment")
@@ -139,10 +156,51 @@ class InteractionService {
         }
     }
     
+    // MARK: - いいねした投稿を取得
+    func fetchLikedPosts(userId: UUID) async throws -> [Post] {
+        print("🟡 [いいね投稿取得] 開始 - userId: \(userId)")
+        
+        do {
+            let likes: [Like] = try await SupabaseClient.shared.client
+                .from("likes")
+                .select("post_id")
+                .eq("user_id", value: userId.uuidString)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+            
+            let postIds = likes.map { $0.postId.uuidString }
+            
+            guard !postIds.isEmpty else {
+                print("✅ [いいね投稿取得] いいねした投稿なし")
+                return []
+            }
+            
+            let posts: [Post] = try await SupabaseClient.shared.client
+                .from("posts")
+                .select("*, user:users(*), nodes(*), connections:node_connections(*)")
+                .in("id", values: postIds)
+                .eq("is_deleted", value: false)
+                .execute()
+                .value
+            
+            // いいねの順番を維持
+            let orderedPosts = postIds.compactMap { postId in
+                posts.first { $0.id.uuidString == postId }
+            }
+            
+            print("✅ [いいね投稿取得] 成功: \(orderedPosts.count)件")
+            return orderedPosts
+        } catch {
+            print("🔴 [いいね投稿取得] エラー: \(error)")
+            throw error
+        }
+    }
+    
+    // MARK: - コメント削除
     func deleteComment(commentId: UUID) async throws {
         print("🟡 [コメント削除] 開始 - commentId: \(commentId)")
         do {
-            // 返信も一緒に削除される（CASCADE）
             try await SupabaseClient.shared.client
                 .from("comments")
                 .delete()
@@ -152,6 +210,31 @@ class InteractionService {
         } catch {
             print("🔴 [コメント削除] エラー: \(error)")
             throw error
+        }
+    }
+
+    // 投稿者返信通知を作成
+    private func createOwnerReplyNotification(parentCommentId: UUID, actorId: UUID, postId: UUID) async throws {
+        print("🟡 [投稿者返信通知] 開始")
+        
+        struct CommentOwner: Decodable { let user_id: UUID }
+        
+        do {
+            let parentComment: CommentOwner = try await SupabaseClient.shared.client
+                .from("comments")
+                .select("user_id")
+                .eq("id", value: parentCommentId.uuidString)
+                .single()
+                .execute()
+                .value
+            
+            // 自分自身への返信は通知しない
+            guard parentComment.user_id != actorId else { return }
+            
+            try await createNotificationDirect(userId: parentComment.user_id, actorId: actorId, type: "owner_reply", postId: postId)
+            print("✅ [投稿者返信通知] 成功")
+        } catch {
+            print("🔴 [投稿者返信通知] エラー: \(error)")
         }
     }
     

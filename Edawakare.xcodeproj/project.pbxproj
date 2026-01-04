@@ -28,6 +28,34 @@
 		ACD313DC2F04625D00E076C4 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313DB2F04625D00E076C4 /* SupabaseClient.swift */; };
 		ACD314002F04C42600E076C4 /* FeedViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD313FF2F04C42600E076C4 /* FeedViewModel.swift */; };
 		ACD314422F08BEEA00E076C4 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314412F08BEEA00E076C4 /* Constants.swift */; };
+		ACD314992F08C30A00E076C4 /* DeepLinkPostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314952F08C30A00E076C4 /* DeepLinkPostView.swift */; };
+		ACD3149A2F08C30A00E076C4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314962F08C30A00E076C4 /* SettingsView.swift */; };
+		ACD3149B2F08C30A00E076C4 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314832F08C30A00E076C4 /* MainTabView.swift */; };
+		ACD3149C2F08C30A00E076C4 /* MyPostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314882F08C30A00E076C4 /* MyPostDetailView.swift */; };
+		ACD3149D2F08C30A00E076C4 /* MindMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314902F08C30A00E076C4 /* MindMapView.swift */; };
+		ACD3149E2F08C30A00E076C4 /* EditPostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3148F2F08C30A00E076C4 /* EditPostView.swift */; };
+		ACD3149F2F08C30A00E076C4 /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314852F08C30A00E076C4 /* NotificationsView.swift */; };
+		ACD314A02F08C30A00E076C4 /* CreatePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3148E2F08C30A00E076C4 /* CreatePostView.swift */; };
+		ACD314A12F08C30A00E076C4 /* FollowListType.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314872F08C30A00E076C4 /* FollowListType.swift */; };
+		ACD314A22F08C30A00E076C4 /* HomeFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314822F08C30A00E076C4 /* HomeFeedView.swift */; };
+		ACD314A32F08C30A00E076C4 /* PasswordResetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147B2F08C30A00E076C4 /* PasswordResetView.swift */; };
+		ACD314A42F08C30A00E076C4 /* CommonComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147E2F08C30A00E076C4 /* CommonComponents.swift */; };
+		ACD314A52F08C30A00E076C4 /* DMViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314802F08C30A00E076C4 /* DMViews.swift */; };
+		ACD314A62F08C30A00E076C4 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147A2F08C30A00E076C4 /* LoginView.swift */; };
+		ACD314A72F08C30A00E076C4 /* ProfileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314892F08C30A00E076C4 /* ProfileViews.swift */; };
+		ACD314A82F08C30A00E076C4 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314932F08C30A00E076C4 /* SearchView.swift */; };
+		ACD314A92F08C30A00E076C4 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314912F08C30A00E076C4 /* PostDetailView.swift */; };
+		ACD314AA2F08C30A00E076C4 /* MyPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3148B2F08C30A00E076C4 /* MyPageView.swift */; };
+		ACD314AB2F08C30A00E076C4 /* CommentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3148D2F08C30A00E076C4 /* CommentsView.swift */; };
+		ACD314AC2F08C30A00E076C4 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147C2F08C30A00E076C4 /* SignUpView.swift */; };
+		ACD314B02F09216500E076C4 /* NotificationSettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314AF2F09216500E076C4 /* NotificationSettingsManager.swift */; };
+		ACD314B22F09E7F200E076C4 /* ImageSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314B12F09E7F200E076C4 /* ImageSaver.swift */; };
+		ACD314B42F09F17400E076C4 /* DraftPost.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314B32F09F17400E076C4 /* DraftPost.swift */; };
+		ACD314B62F09F18600E076C4 /* DraftManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314B52F09F18600E076C4 /* DraftManager.swift */; };
+		ACD314B82F09F1F300E076C4 /* EditDraftView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314B72F09F1F300E076C4 /* EditDraftView.swift */; };
+		ACD314BA2F09F7D000E076C4 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314B92F09F7D000E076C4 /* HapticManager.swift */; };
+		ACD314BC2F09F7E400E076C4 /* SkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314BB2F09F7E400E076C4 /* SkeletonView.swift */; };
+		ACD314BE2F09F7F600E076C4 /* AnimatedButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314BD2F09F7F600E076C4 /* AnimatedButtons.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,6 +75,34 @@
 		ACD313DB2F04625D00E076C4 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		ACD313FF2F04C42600E076C4 /* FeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedViewModel.swift; sourceTree = "<group>"; };
 		ACD314412F08BEEA00E076C4 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		ACD3147A2F08C30A00E076C4 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		ACD3147B2F08C30A00E076C4 /* PasswordResetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetView.swift; sourceTree = "<group>"; };
+		ACD3147C2F08C30A00E076C4 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
+		ACD3147E2F08C30A00E076C4 /* CommonComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommonComponents.swift; sourceTree = "<group>"; };
+		ACD314802F08C30A00E076C4 /* DMViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DMViews.swift; sourceTree = "<group>"; };
+		ACD314822F08C30A00E076C4 /* HomeFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeedView.swift; sourceTree = "<group>"; };
+		ACD314832F08C30A00E076C4 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		ACD314852F08C30A00E076C4 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		ACD314872F08C30A00E076C4 /* FollowListType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollowListType.swift; sourceTree = "<group>"; };
+		ACD314882F08C30A00E076C4 /* MyPostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPostDetailView.swift; sourceTree = "<group>"; };
+		ACD314892F08C30A00E076C4 /* ProfileViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViews.swift; sourceTree = "<group>"; };
+		ACD3148B2F08C30A00E076C4 /* MyPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPageView.swift; sourceTree = "<group>"; };
+		ACD3148D2F08C30A00E076C4 /* CommentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentsView.swift; sourceTree = "<group>"; };
+		ACD3148E2F08C30A00E076C4 /* CreatePostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePostView.swift; sourceTree = "<group>"; };
+		ACD3148F2F08C30A00E076C4 /* EditPostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPostView.swift; sourceTree = "<group>"; };
+		ACD314902F08C30A00E076C4 /* MindMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MindMapView.swift; sourceTree = "<group>"; };
+		ACD314912F08C30A00E076C4 /* PostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostDetailView.swift; sourceTree = "<group>"; };
+		ACD314932F08C30A00E076C4 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		ACD314952F08C30A00E076C4 /* DeepLinkPostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkPostView.swift; sourceTree = "<group>"; };
+		ACD314962F08C30A00E076C4 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		ACD314AF2F09216500E076C4 /* NotificationSettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSettingsManager.swift; sourceTree = "<group>"; };
+		ACD314B12F09E7F200E076C4 /* ImageSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageSaver.swift; sourceTree = "<group>"; };
+		ACD314B32F09F17400E076C4 /* DraftPost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftPost.swift; sourceTree = "<group>"; };
+		ACD314B52F09F18600E076C4 /* DraftManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftManager.swift; sourceTree = "<group>"; };
+		ACD314B72F09F1F300E076C4 /* EditDraftView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditDraftView.swift; sourceTree = "<group>"; };
+		ACD314B92F09F7D000E076C4 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
+		ACD314BB2F09F7E400E076C4 /* SkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonView.swift; sourceTree = "<group>"; };
+		ACD314BD2F09F7F600E076C4 /* AnimatedButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedButtons.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -66,11 +122,6 @@
 				ACD3140C2F07069B00E076C4 /* Exceptions for "Edawakare" folder in "Edawakare" target */,
 			);
 			path = Edawakare;
-			sourceTree = "<group>";
-		};
-		ACD3140D2F07072100E076C4 /* New Folder */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "New Folder";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -95,7 +146,7 @@
 		ACD312EF2F03A4A800E076C4 = {
 			isa = PBXGroup;
 			children = (
-				ACD3140D2F07072100E076C4 /* New Folder */,
+				ACD314982F08C30A00E076C4 /* Views */,
 				ACD3139B2F045BCF00E076C4 /* Utilities */,
 				ACD3139D2F045BCF00E076C4 /* ViewModels */,
 				ACD313912F045BC400E076C4 /* Models */,
@@ -131,6 +182,7 @@
 				ACD3138E2F045BC400E076C4 /* OtherModels.swift */,
 				ACD3138F2F045BC400E076C4 /* Post.swift */,
 				ACD313902F045BC400E076C4 /* User.swift */,
+				ACD314B32F09F17400E076C4 /* DraftPost.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -144,6 +196,8 @@
 				ACD313D12F0461D500E076C4 /* PostService.swift */,
 				ACD313D32F0461DD00E076C4 /* NotificationMessageService.swift */,
 				ACD313DB2F04625D00E076C4 /* SupabaseClient.swift */,
+				ACD314AF2F09216500E076C4 /* NotificationSettingsManager.swift */,
+				ACD314B52F09F18600E076C4 /* DraftManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -152,6 +206,9 @@
 			isa = PBXGroup;
 			children = (
 				ACD3139A2F045BCF00E076C4 /* MockData.swift */,
+				ACD314B12F09E7F200E076C4 /* ImageSaver.swift */,
+				ACD314B92F09F7D000E076C4 /* HapticManager.swift */,
+				ACD314BB2F09F7E400E076C4 /* SkeletonView.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -162,6 +219,115 @@
 				ACD313FF2F04C42600E076C4 /* FeedViewModel.swift */,
 			);
 			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		ACD3147D2F08C30A00E076C4 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				ACD3147A2F08C30A00E076C4 /* LoginView.swift */,
+				ACD3147B2F08C30A00E076C4 /* PasswordResetView.swift */,
+				ACD3147C2F08C30A00E076C4 /* SignUpView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		ACD3147F2F08C30A00E076C4 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				ACD3147E2F08C30A00E076C4 /* CommonComponents.swift */,
+				ACD314BD2F09F7F600E076C4 /* AnimatedButtons.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		ACD314812F08C30A00E076C4 /* DM */ = {
+			isa = PBXGroup;
+			children = (
+				ACD314802F08C30A00E076C4 /* DMViews.swift */,
+			);
+			path = DM;
+			sourceTree = "<group>";
+		};
+		ACD314842F08C30A00E076C4 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				ACD314822F08C30A00E076C4 /* HomeFeedView.swift */,
+				ACD314832F08C30A00E076C4 /* MainTabView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		ACD314862F08C30A00E076C4 /* Notifications */ = {
+			isa = PBXGroup;
+			children = (
+				ACD314852F08C30A00E076C4 /* NotificationsView.swift */,
+			);
+			path = Notifications;
+			sourceTree = "<group>";
+		};
+		ACD3148A2F08C30A00E076C4 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				ACD314872F08C30A00E076C4 /* FollowListType.swift */,
+				ACD314882F08C30A00E076C4 /* MyPostDetailView.swift */,
+				ACD314892F08C30A00E076C4 /* ProfileViews.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		ACD3148C2F08C30A00E076C4 /* Main */ = {
+			isa = PBXGroup;
+			children = (
+				ACD314812F08C30A00E076C4 /* DM */,
+				ACD314842F08C30A00E076C4 /* Home */,
+				ACD314862F08C30A00E076C4 /* Notifications */,
+				ACD3148A2F08C30A00E076C4 /* Profile */,
+				ACD3148B2F08C30A00E076C4 /* MyPageView.swift */,
+			);
+			path = Main;
+			sourceTree = "<group>";
+		};
+		ACD314922F08C30A00E076C4 /* Post */ = {
+			isa = PBXGroup;
+			children = (
+				ACD3148D2F08C30A00E076C4 /* CommentsView.swift */,
+				ACD3148E2F08C30A00E076C4 /* CreatePostView.swift */,
+				ACD3148F2F08C30A00E076C4 /* EditPostView.swift */,
+				ACD314902F08C30A00E076C4 /* MindMapView.swift */,
+				ACD314912F08C30A00E076C4 /* PostDetailView.swift */,
+				ACD314B72F09F1F300E076C4 /* EditDraftView.swift */,
+			);
+			path = Post;
+			sourceTree = "<group>";
+		};
+		ACD314942F08C30A00E076C4 /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				ACD314932F08C30A00E076C4 /* SearchView.swift */,
+			);
+			path = Search;
+			sourceTree = "<group>";
+		};
+		ACD314972F08C30A00E076C4 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				ACD314952F08C30A00E076C4 /* DeepLinkPostView.swift */,
+				ACD314962F08C30A00E076C4 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		ACD314982F08C30A00E076C4 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				ACD3147D2F08C30A00E076C4 /* Auth */,
+				ACD3147F2F08C30A00E076C4 /* Components */,
+				ACD3148C2F08C30A00E076C4 /* Main */,
+				ACD314922F08C30A00E076C4 /* Post */,
+				ACD314942F08C30A00E076C4 /* Search */,
+				ACD314972F08C30A00E076C4 /* Settings */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -181,7 +347,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				ACD312FA2F03A4A800E076C4 /* Edawakare */,
-				ACD3140D2F07072100E076C4 /* New Folder */,
 			);
 			name = Edawakare;
 			packageProductDependencies = (
@@ -249,8 +414,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				ACD313D02F0461C900E076C4 /* Userblockreportservice.swift in Sources */,
+				ACD314B02F09216500E076C4 /* NotificationSettingsManager.swift in Sources */,
 				ACD313952F045BC400E076C4 /* Post.swift in Sources */,
 				ACD313DC2F04625D00E076C4 /* SupabaseClient.swift in Sources */,
+				ACD314BE2F09F7F600E076C4 /* AnimatedButtons.swift in Sources */,
 				ACD314002F04C42600E076C4 /* FeedViewModel.swift in Sources */,
 				ACD313D62F0461E800E076C4 /* InteractionService.swift in Sources */,
 				ACD313D82F0461EF00E076C4 /* Authservice.swift in Sources */,
@@ -260,8 +427,34 @@
 				ACD313D22F0461D500E076C4 /* PostService.swift in Sources */,
 				ACD313D42F0461DD00E076C4 /* NotificationMessageService.swift in Sources */,
 				ACD313972F045BC400E076C4 /* OtherModels.swift in Sources */,
+				ACD314992F08C30A00E076C4 /* DeepLinkPostView.swift in Sources */,
+				ACD3149A2F08C30A00E076C4 /* SettingsView.swift in Sources */,
+				ACD3149B2F08C30A00E076C4 /* MainTabView.swift in Sources */,
+				ACD314B82F09F1F300E076C4 /* EditDraftView.swift in Sources */,
+				ACD3149C2F08C30A00E076C4 /* MyPostDetailView.swift in Sources */,
+				ACD3149D2F08C30A00E076C4 /* MindMapView.swift in Sources */,
+				ACD3149E2F08C30A00E076C4 /* EditPostView.swift in Sources */,
+				ACD314B42F09F17400E076C4 /* DraftPost.swift in Sources */,
+				ACD3149F2F08C30A00E076C4 /* NotificationsView.swift in Sources */,
+				ACD314A02F08C30A00E076C4 /* CreatePostView.swift in Sources */,
+				ACD314A12F08C30A00E076C4 /* FollowListType.swift in Sources */,
+				ACD314A22F08C30A00E076C4 /* HomeFeedView.swift in Sources */,
+				ACD314A32F08C30A00E076C4 /* PasswordResetView.swift in Sources */,
+				ACD314A42F08C30A00E076C4 /* CommonComponents.swift in Sources */,
+				ACD314A52F08C30A00E076C4 /* DMViews.swift in Sources */,
+				ACD314A62F08C30A00E076C4 /* LoginView.swift in Sources */,
+				ACD314BC2F09F7E400E076C4 /* SkeletonView.swift in Sources */,
+				ACD314A72F08C30A00E076C4 /* ProfileViews.swift in Sources */,
+				ACD314B22F09E7F200E076C4 /* ImageSaver.swift in Sources */,
+				ACD314B62F09F18600E076C4 /* DraftManager.swift in Sources */,
+				ACD314A82F08C30A00E076C4 /* SearchView.swift in Sources */,
+				ACD314A92F08C30A00E076C4 /* PostDetailView.swift in Sources */,
+				ACD314AA2F08C30A00E076C4 /* MyPageView.swift in Sources */,
+				ACD314AB2F08C30A00E076C4 /* CommentsView.swift in Sources */,
+				ACD314AC2F08C30A00E076C4 /* SignUpView.swift in Sources */,
 				ACD313982F045BC400E076C4 /* User.swift in Sources */,
 				ACD313992F045BC400E076C4 /* NodeConnection.swift in Sources */,
+				ACD314BA2F09F7D000E076C4 /* HapticManager.swift in Sources */,
 				ACD3138B2F045BAD00E076C4 /* EdawakareApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -1,6 +1,7 @@
 // Models/OtherModels.swift
 
 import Foundation
+import SwiftUI
 
 // MARK: - Comment
 struct Comment: Identifiable, Codable {
@@ -300,5 +301,55 @@ struct AppNotification: Identifiable, Codable {
         self.createdAt = createdAt
         self.actor = actor
         self.post = post
+    }
+}
+
+// MARK: - NotificationType
+enum NotificationType: String {
+    case like = "like"
+    case comment = "comment"
+    case reply = "reply"
+    case follow = "follow"
+    case dm = "dm"
+    case ownerReply = "owner_reply"
+    
+    var icon: String {
+        switch self {
+        case .like: return "heart.fill"
+        case .comment: return "bubble.right.fill"
+        case .reply: return "arrowshape.turn.up.left.fill"
+        case .follow: return "person.fill.badge.plus"
+        case .dm: return "envelope.fill"
+        case .ownerReply: return "tag.fill"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .like: return .pink
+        case .comment: return .blue
+        case .reply: return .purple
+        case .follow: return .green
+        case .dm: return .orange
+        case .ownerReply: return .cyan
+        }
+    }
+    
+    var message: String {
+        switch self {
+        case .like: return "があなたの投稿にいいねしました"
+        case .comment: return "がコメントしました"
+        case .reply: return "が返信しました"
+        case .follow: return "があなたをフォローしました"
+        case .dm: return "からメッセージが届きました"
+        case .ownerReply: return "が返信しました"
+        }
+    }
+}
+
+// MARK: - AppNotification Extension
+extension AppNotification {
+    var notificationType: NotificationType {
+        NotificationType(rawValue: type) ?? .like
     }
 }
