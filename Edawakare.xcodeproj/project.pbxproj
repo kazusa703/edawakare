@@ -42,7 +42,6 @@
 		ACD314A42F08C30A00E076C4 /* CommonComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147E2F08C30A00E076C4 /* CommonComponents.swift */; };
 		ACD314A52F08C30A00E076C4 /* DMViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314802F08C30A00E076C4 /* DMViews.swift */; };
 		ACD314A62F08C30A00E076C4 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147A2F08C30A00E076C4 /* LoginView.swift */; };
-		ACD314A72F08C30A00E076C4 /* ProfileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314892F08C30A00E076C4 /* ProfileViews.swift */; };
 		ACD314A82F08C30A00E076C4 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314932F08C30A00E076C4 /* SearchView.swift */; };
 		ACD314A92F08C30A00E076C4 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314912F08C30A00E076C4 /* PostDetailView.swift */; };
 		ACD314AA2F08C30A00E076C4 /* MyPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3148B2F08C30A00E076C4 /* MyPageView.swift */; };
@@ -56,6 +55,14 @@
 		ACD314BA2F09F7D000E076C4 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314B92F09F7D000E076C4 /* HapticManager.swift */; };
 		ACD314BC2F09F7E400E076C4 /* SkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314BB2F09F7E400E076C4 /* SkeletonView.swift */; };
 		ACD314BE2F09F7F600E076C4 /* AnimatedButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314BD2F09F7F600E076C4 /* AnimatedButtons.swift */; };
+		ACD314C02F0A267E00E076C4 /* NodeStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314BF2F0A267E00E076C4 /* NodeStyle.swift */; };
+		ACD314C22F0A269F00E076C4 /* NodeStyleEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314C12F0A269F00E076C4 /* NodeStyleEditor.swift */; };
+		ACD314C42F0A26B800E076C4 /* ConnectionStyleEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314C32F0A26B800E076C4 /* ConnectionStyleEditor.swift */; };
+		ACD314C62F0A26CE00E076C4 /* PostPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314C52F0A26CE00E076C4 /* PostPreviewView.swift */; };
+		ACD314CE2F0A431500E076C4 /* UserProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314CD2F0A431500E076C4 /* UserProfileView.swift */; };
+		ACD314D02F0A4A0700E076C4 /* Mindmapdisplayview.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314CF2F0A4A0700E076C4 /* Mindmapdisplayview.swift */; };
+		ACD314D22F0A51C200E076C4 /* UnifyStyleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314D12F0A51C200E076C4 /* UnifyStyleView.swift */; };
+		ACD314D62F0A79E000E076C4 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314D52F0A79E000E076C4 /* SharedComponents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -85,7 +92,6 @@
 		ACD314852F08C30A00E076C4 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		ACD314872F08C30A00E076C4 /* FollowListType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FollowListType.swift; sourceTree = "<group>"; };
 		ACD314882F08C30A00E076C4 /* MyPostDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPostDetailView.swift; sourceTree = "<group>"; };
-		ACD314892F08C30A00E076C4 /* ProfileViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViews.swift; sourceTree = "<group>"; };
 		ACD3148B2F08C30A00E076C4 /* MyPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyPageView.swift; sourceTree = "<group>"; };
 		ACD3148D2F08C30A00E076C4 /* CommentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentsView.swift; sourceTree = "<group>"; };
 		ACD3148E2F08C30A00E076C4 /* CreatePostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePostView.swift; sourceTree = "<group>"; };
@@ -103,6 +109,14 @@
 		ACD314B92F09F7D000E076C4 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		ACD314BB2F09F7E400E076C4 /* SkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkeletonView.swift; sourceTree = "<group>"; };
 		ACD314BD2F09F7F600E076C4 /* AnimatedButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedButtons.swift; sourceTree = "<group>"; };
+		ACD314BF2F0A267E00E076C4 /* NodeStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeStyle.swift; sourceTree = "<group>"; };
+		ACD314C12F0A269F00E076C4 /* NodeStyleEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeStyleEditor.swift; sourceTree = "<group>"; };
+		ACD314C32F0A26B800E076C4 /* ConnectionStyleEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionStyleEditor.swift; sourceTree = "<group>"; };
+		ACD314C52F0A26CE00E076C4 /* PostPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostPreviewView.swift; sourceTree = "<group>"; };
+		ACD314CD2F0A431500E076C4 /* UserProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileView.swift; sourceTree = "<group>"; };
+		ACD314CF2F0A4A0700E076C4 /* Mindmapdisplayview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mindmapdisplayview.swift; sourceTree = "<group>"; };
+		ACD314D12F0A51C200E076C4 /* UnifyStyleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifyStyleView.swift; sourceTree = "<group>"; };
+		ACD314D52F0A79E000E076C4 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -236,6 +250,12 @@
 			children = (
 				ACD3147E2F08C30A00E076C4 /* CommonComponents.swift */,
 				ACD314BD2F09F7F600E076C4 /* AnimatedButtons.swift */,
+				ACD314BF2F0A267E00E076C4 /* NodeStyle.swift */,
+				ACD314C12F0A269F00E076C4 /* NodeStyleEditor.swift */,
+				ACD314C32F0A26B800E076C4 /* ConnectionStyleEditor.swift */,
+				ACD314C52F0A26CE00E076C4 /* PostPreviewView.swift */,
+				ACD314D12F0A51C200E076C4 /* UnifyStyleView.swift */,
+				ACD314D52F0A79E000E076C4 /* SharedComponents.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -270,7 +290,7 @@
 			children = (
 				ACD314872F08C30A00E076C4 /* FollowListType.swift */,
 				ACD314882F08C30A00E076C4 /* MyPostDetailView.swift */,
-				ACD314892F08C30A00E076C4 /* ProfileViews.swift */,
+				ACD314CD2F0A431500E076C4 /* UserProfileView.swift */,
 			);
 			path = Profile;
 			sourceTree = "<group>";
@@ -296,6 +316,7 @@
 				ACD314902F08C30A00E076C4 /* MindMapView.swift */,
 				ACD314912F08C30A00E076C4 /* PostDetailView.swift */,
 				ACD314B72F09F1F300E076C4 /* EditDraftView.swift */,
+				ACD314CF2F0A4A0700E076C4 /* Mindmapdisplayview.swift */,
 			);
 			path = Post;
 			sourceTree = "<group>";
@@ -417,6 +438,7 @@
 				ACD314B02F09216500E076C4 /* NotificationSettingsManager.swift in Sources */,
 				ACD313952F045BC400E076C4 /* Post.swift in Sources */,
 				ACD313DC2F04625D00E076C4 /* SupabaseClient.swift in Sources */,
+				ACD314D62F0A79E000E076C4 /* SharedComponents.swift in Sources */,
 				ACD314BE2F09F7F600E076C4 /* AnimatedButtons.swift in Sources */,
 				ACD314002F04C42600E076C4 /* FeedViewModel.swift in Sources */,
 				ACD313D62F0461E800E076C4 /* InteractionService.swift in Sources */,
@@ -430,21 +452,25 @@
 				ACD314992F08C30A00E076C4 /* DeepLinkPostView.swift in Sources */,
 				ACD3149A2F08C30A00E076C4 /* SettingsView.swift in Sources */,
 				ACD3149B2F08C30A00E076C4 /* MainTabView.swift in Sources */,
+				ACD314C02F0A267E00E076C4 /* NodeStyle.swift in Sources */,
 				ACD314B82F09F1F300E076C4 /* EditDraftView.swift in Sources */,
 				ACD3149C2F08C30A00E076C4 /* MyPostDetailView.swift in Sources */,
+				ACD314D22F0A51C200E076C4 /* UnifyStyleView.swift in Sources */,
 				ACD3149D2F08C30A00E076C4 /* MindMapView.swift in Sources */,
 				ACD3149E2F08C30A00E076C4 /* EditPostView.swift in Sources */,
 				ACD314B42F09F17400E076C4 /* DraftPost.swift in Sources */,
 				ACD3149F2F08C30A00E076C4 /* NotificationsView.swift in Sources */,
+				ACD314C62F0A26CE00E076C4 /* PostPreviewView.swift in Sources */,
 				ACD314A02F08C30A00E076C4 /* CreatePostView.swift in Sources */,
 				ACD314A12F08C30A00E076C4 /* FollowListType.swift in Sources */,
 				ACD314A22F08C30A00E076C4 /* HomeFeedView.swift in Sources */,
+				ACD314C22F0A269F00E076C4 /* NodeStyleEditor.swift in Sources */,
+				ACD314C42F0A26B800E076C4 /* ConnectionStyleEditor.swift in Sources */,
 				ACD314A32F08C30A00E076C4 /* PasswordResetView.swift in Sources */,
 				ACD314A42F08C30A00E076C4 /* CommonComponents.swift in Sources */,
 				ACD314A52F08C30A00E076C4 /* DMViews.swift in Sources */,
 				ACD314A62F08C30A00E076C4 /* LoginView.swift in Sources */,
 				ACD314BC2F09F7E400E076C4 /* SkeletonView.swift in Sources */,
-				ACD314A72F08C30A00E076C4 /* ProfileViews.swift in Sources */,
 				ACD314B22F09E7F200E076C4 /* ImageSaver.swift in Sources */,
 				ACD314B62F09F18600E076C4 /* DraftManager.swift in Sources */,
 				ACD314A82F08C30A00E076C4 /* SearchView.swift in Sources */,
@@ -452,8 +478,10 @@
 				ACD314AA2F08C30A00E076C4 /* MyPageView.swift in Sources */,
 				ACD314AB2F08C30A00E076C4 /* CommentsView.swift in Sources */,
 				ACD314AC2F08C30A00E076C4 /* SignUpView.swift in Sources */,
+				ACD314CE2F0A431500E076C4 /* UserProfileView.swift in Sources */,
 				ACD313982F045BC400E076C4 /* User.swift in Sources */,
 				ACD313992F045BC400E076C4 /* NodeConnection.swift in Sources */,
+				ACD314D02F0A4A0700E076C4 /* Mindmapdisplayview.swift in Sources */,
 				ACD314BA2F09F7D000E076C4 /* HapticManager.swift in Sources */,
 				ACD3138B2F045BAD00E076C4 /* EdawakareApp.swift in Sources */,
 			);

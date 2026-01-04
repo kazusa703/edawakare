@@ -11,7 +11,9 @@ struct NodeInput {
     let positionX: Double
     let positionY: Double
     let isCenter: Bool
+    var note: String?  // 追加
 }
+
 
 struct ConnectionInput {
     let fromLocalId: String

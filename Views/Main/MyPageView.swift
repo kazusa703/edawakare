@@ -7,6 +7,7 @@ struct MyPageView: View {
     @StateObject private var viewModel = FeedViewModel()
     @State private var userPosts: [Post] = []
     @State private var showSettings = false
+    @State private var showCreatePost = false  // 追加
     @State private var isLoading = false
     @State private var followersCount = 0
     @State private var followingCount = 0
@@ -58,11 +59,34 @@ struct MyPageView: View {
             .navigationTitle("マイページ")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showSettings = true }) {
-                        Image(systemName: "gearshape")
+                // 左側: 投稿作成ボタン
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        showCreatePost = true
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.purple, .pink],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
                     }
                 }
+                
+                // 右側: 設定ボタン
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showSettings = true }) {
+                        Image(systemName: "gearshape.fill")
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: $showCreatePost) {
+                CreatePostView()
+                    .environmentObject(authService)
             }
             .sheet(isPresented: $showSettings, onDismiss: {
                 Task {

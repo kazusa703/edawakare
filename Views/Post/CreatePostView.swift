@@ -3,328 +3,311 @@
 import SwiftUI
 import Supabase
 
-// MARK: - CreatePostView
 struct CreatePostView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var authService: AuthService
-    @ObservedObject private var draftManager = DraftManager.shared
     
-    @State private var showCenterNodeInput = true
     @State private var centerNodeText = ""
-    @State private var editMode: EditMode = .text
-    @State private var nodes: [EditableNode] = []
-    @State private var connections: [EditableConnection] = []
-    @State private var selectedNodeId: UUID?
-    @State private var selectedConnectionId: UUID?
-    @State private var showEditSheet = false
-    @State private var editingText = ""
-    @State private var editingType: EditingType = .node
-    @State private var showReasonPopup = false
-    @State private var popupReason = ""
+    @State private var showCenterNodeInput = true
+    @State private var nodes: [StyledNode] = []
+    @State private var connections: [StyledConnection] = []
+    @State private var selectedNodeId: UUID? = nil
+    @State private var selectedConnectionId: UUID? = nil
+    @State private var isTextMode = true
+    @State private var scale: CGFloat = 1.0
+    @State private var visualScale: CGFloat = 1.0
+    @State private var visualOffset: CGSize = .zero
     @State private var isPosting = false
-    @State private var showError = false
     @State private var errorMessage = ""
-    @State private var showDraftSavedAlert = false
-    @State private var showDraftLimitAlert = false
+    @State private var showError = false
+    @State private var showPreview = false
+    @State private var showUnifyStyle = false
     
-    enum EditMode: String, CaseIterable {
-        case text = "テキスト"
-        case visual = "ビジュアル"
-    }
+    // 履歴管理
+    @State private var history: [MindMapState] = []
+    @State private var historyIndex = -1
     
-    enum EditingType {
-        case node
-        case connection
-    }
+    // 理由ポップアップ
+    @State private var popupReason = ""
+    @State private var showReasonPopup = false
     
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                VStack(spacing: 0) {
-                    if showCenterNodeInput {
-                        CenterNodeInputView(
-                            centerNodeText: $centerNodeText,
-                            onConfirm: {
-                                createCenterNode()
-                                showCenterNodeInput = false
-                            }
-                        )
-                    } else {
-                        Picker("編集モード", selection: $editMode) {
-                            ForEach(EditMode.allCases, id: \.self) { mode in
-                                Text(mode.rawValue).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
-                        .padding(.top, 8)
-                        
-                        if editMode == .visual {
-                            VisualToolbar(
-                                hasSelection: selectedNodeId != nil || selectedConnectionId != nil,
-                                onAdd: addChildNode,
-                                onEdit: startEditing,
-                                onDelete: deleteSelected
-                            )
-                        }
-                        
-                        if editMode == .text {
-                            TextModeView(
-                                centerNodeText: centerNodeText,
-                                nodes: $nodes,
-                                connections: $connections,
-                                onEditCenterNode: {
-                                    editingType = .node
-                                    editingText = centerNodeText
-                                    showEditSheet = true
-                                }
-                            )
-                        } else {
-                            VisualModeView(
-                                centerNodeText: centerNodeText,
-                                nodes: $nodes,
-                                connections: $connections,
-                                selectedNodeId: $selectedNodeId,
-                                selectedConnectionId: $selectedConnectionId,
-                                onShowReason: { reason in
-                                    popupReason = reason
-                                    showReasonPopup = true
-                                }
-                            )
-                        }
-                    }
-                }
-                
-                if showReasonPopup {
-                    ReasonPopupView(
-                        reason: popupReason,
-                        onDismiss: { showReasonPopup = false }
-                    )
-                }
-                
-                if isPosting {
-                    Color.black.opacity(0.3)
-                        .ignoresSafeArea()
-                    ProgressView("投稿中...")
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                }
-            }
-            .navigationTitle("新規投稿")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("キャンセル") { dismiss() }
-                        .disabled(isPosting)
-                }
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    if !showCenterNodeInput {
-                        // 下書き保存ボタン
-                        Button("下書き") {
-                            saveDraft()
-                        }
-                        .foregroundColor(.orange)
-                        .disabled(isPosting || centerNodeText.isEmpty)
-                        
-                        // 投稿ボタン
-                        Button("投稿") { postToSupabase() }
-                            .fontWeight(.semibold)
-                            .foregroundColor(.purple)
-                            .disabled(isPosting || !canPost)
-                    }
-                }
-            }
-            .sheet(isPresented: $showEditSheet) {
-                EditTextSheet(
-                    title: editingType == .node ? "ノードを編集" : "理由を編集",
-                    text: $editingText,
-                    onSave: saveEdit
-                )
-            }
-            .alert("エラー", isPresented: $showError) {
-                Button("OK") { }
-            } message: {
-                Text(errorMessage)
-            }
-            .alert("下書きを保存しました", isPresented: $showDraftSavedAlert) {
-                Button("OK") {
-                    dismiss()
-                }
-            } message: {
-                Text("設定 > 下書き から編集できます")
-            }
-            .alert("下書きの上限に達しました", isPresented: $showDraftLimitAlert) {
-                Button("OK") { }
-            } message: {
-                Text("下書きは最大12件まで保存できます。不要な下書きを削除してください。")
-            }
-        }
-    }
-    
-    // 投稿可能かチェック（中心ノード以外に1つ以上ノードがある）
     private var canPost: Bool {
         nodes.count >= 2
     }
     
-    private func createCenterNode() {
-        let centerNode = EditableNode(
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if showCenterNodeInput {
+                    CenterNodeInputView(
+                        centerNodeText: $centerNodeText,
+                        onConfirm: {
+                            initializeCenterNode()
+                            withAnimation {
+                                showCenterNodeInput = false
+                            }
+                        }
+                    )
+                } else {
+                    // モード切替
+                    Picker("モード", selection: $isTextMode) {
+                        Text("テキスト").tag(true)
+                        Text("ビジュアル").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    
+                    if isTextMode {
+                        TextModeView(
+                            centerNodeText: $centerNodeText,
+                            nodes: $nodes,
+                            connections: $connections,
+                            scale: scale,
+                            onSaveHistory: saveHistory
+                        )
+                    } else {
+                        VisualModeView(
+                            centerNodeText: centerNodeText,
+                            nodes: $nodes,
+                            connections: $connections,
+                            selectedNodeId: $selectedNodeId,
+                            selectedConnectionId: $selectedConnectionId,
+                            scale: $visualScale,
+                            offset: $visualOffset,
+                            onShowReason: { reason in
+                                popupReason = reason
+                                showReasonPopup = true
+                            },
+                            onSaveHistory: saveHistory
+                        )
+                    }
+                }
+            }
+            .navigationTitle(showCenterNodeInput ? "新規作成" : centerNodeText)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    HStack(spacing: 12) {
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .disabled(isPosting)
+                        
+                        if !showCenterNodeInput {
+                            Button(action: { showPreview = true }) {
+                                Image(systemName: "eye")
+                                    .font(.system(size: 16))
+                            }
+                            
+                            Button(action: { showUnifyStyle = true }) {
+                                Image(systemName: "paintpalette")
+                                    .font(.system(size: 16))
+                            }
+                        }
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if !showCenterNodeInput {
+                        HStack(spacing: 12) {
+                            if !isTextMode {
+                                Button(action: resetZoom) {
+                                    Image(systemName: "arrow.counterclockwise")
+                                        .font(.system(size: 14))
+                                }
+                                
+                                Button(action: addNodeToCenter) {
+                                    Image(systemName: "plus.circle")
+                                        .font(.system(size: 16))
+                                }
+                            }
+                            
+                            Button(action: undo) {
+                                Image(systemName: "arrow.uturn.backward")
+                                    .font(.system(size: 14))
+                            }
+                            .disabled(historyIndex <= 0)
+                            
+                            Button(action: saveDraft) {
+                                Text("下書き")
+                                    .font(.subheadline)
+                            }
+                            
+                            Menu {
+                                Button(action: { showError = true }) {
+                                    Label("設定", systemImage: "gear")
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .font(.system(size: 16))
+                            }
+                            
+                            Button(action: postToSupabase) {
+                                Text("投稿")
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.purple)
+                            }
+                            .disabled(isPosting || !canPost)
+                        }
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: $showPreview) {
+                PostPreviewView(
+                    centerNodeText: centerNodeText,
+                    nodes: nodes,
+                    connections: connections
+                )
+            }
+            .sheet(isPresented: $showUnifyStyle) {
+                UnifyStyleView(
+                    nodes: $nodes,
+                    connections: $connections,
+                    centerNodeText: centerNodeText
+                )
+            }
+            .alert("エラー", isPresented: $showError) {
+                Button("OK") {}
+            } message: {
+                Text(errorMessage)
+            }
+            .overlay {
+                if showReasonPopup {
+                    ReasonDisplayPopup(
+                        reason: popupReason,
+                        onDismiss: { showReasonPopup = false }
+                    )
+                }
+            }
+        }
+    }
+    
+    // MARK: - Methods
+    
+    private func initializeCenterNode() {
+        let centerNode = StyledNode(
             id: UUID(),
             text: centerNodeText,
             positionX: UIScreen.main.bounds.width / 2,
             positionY: 300,
             isCenter: true,
-            parentId: nil
+            parentId: nil,
+            style: .defaultCenter,
+            note: ""
         )
-        nodes.append(centerNode)
+        nodes = [centerNode]
+        connections = []
+        saveHistory()
     }
     
-    private func addChildNode() {
-        guard let parentId = selectedNodeId,
-              let parentNode = nodes.first(where: { $0.id == parentId }) else { return }
+    private func addNodeToCenter() {
+        saveHistory()
         
-        let angle = Double.random(in: 0...(2 * .pi))
-        let distance: Double = 150
-        let newX = parentNode.positionX + cos(angle) * distance
-        let newY = parentNode.positionY + sin(angle) * distance
+        guard let centerNode = nodes.first(where: { $0.isCenter }) else { return }
         
-        let newNode = EditableNode(
+        let existingChildren = connections.filter { $0.fromNodeId == centerNode.id }.count
+        let angles: [Double] = [-Double.pi / 2, -Double.pi / 6, Double.pi / 6, Double.pi * 5 / 6, -Double.pi * 5 / 6]
+        let angleIndex = existingChildren % angles.count
+        let ring = existingChildren / angles.count
+        let angle = angles[angleIndex]
+        
+        let baseDistance: Double = 160
+        let distance = baseDistance + Double(ring) * 100
+        let newX = centerNode.positionX + cos(angle) * distance
+        let newY = centerNode.positionY + sin(angle) * distance
+        
+        let newNode = StyledNode(
             id: UUID(),
-            text: "新しいノード",
+            text: "",
             positionX: newX,
             positionY: newY,
             isCenter: false,
-            parentId: parentId
+            parentId: centerNode.id,
+            style: .defaultChild,
+            note: ""
         )
         
-        let newConnection = EditableConnection(
+        let newConnection = StyledConnection(
             id: UUID(),
-            fromNodeId: parentId,
+            fromNodeId: centerNode.id,
             toNodeId: newNode.id,
-            reason: ""
+            reason: "",
+            style: .defaultStyle
         )
         
         nodes.append(newNode)
         connections.append(newConnection)
-        
         selectedNodeId = newNode.id
-        selectedConnectionId = nil
-        editingType = .node
-        editingText = newNode.text
-        showEditSheet = true
     }
     
-    private func startEditing() {
-        if let nodeId = selectedNodeId {
-            if let node = nodes.first(where: { $0.id == nodeId }) {
-                if node.isCenter {
-                    editingText = centerNodeText
-                } else {
-                    editingText = node.text
-                }
-                editingType = .node
-                showEditSheet = true
-            }
-        } else if let connectionId = selectedConnectionId {
-            if let connection = connections.first(where: { $0.id == connectionId }) {
-                editingText = connection.reason
-                editingType = .connection
-                showEditSheet = true
-            }
+    private func resetZoom() {
+        withAnimation(.spring(response: 0.3)) {
+            visualScale = 1.0
+            visualOffset = .zero
         }
     }
     
-    private func saveEdit() {
-        if editingType == .node {
-            if let nodeId = selectedNodeId {
-                if let index = nodes.firstIndex(where: { $0.id == nodeId }) {
-                    if nodes[index].isCenter {
-                        centerNodeText = editingText
-                    }
-                    nodes[index].text = editingText
-                }
-            }
-        } else {
-            if let connectionId = selectedConnectionId {
-                if let index = connections.firstIndex(where: { $0.id == connectionId }) {
-                    connections[index].reason = editingText
-                }
-            }
-        }
-        showEditSheet = false
-    }
-    
-    private func deleteSelected() {
-        if let nodeId = selectedNodeId {
-            if let node = nodes.first(where: { $0.id == nodeId }), node.isCenter {
-                return
-            }
-            deleteNodeAndDescendants(nodeId: nodeId)
-            selectedNodeId = nil
-        } else if let connectionId = selectedConnectionId {
-            if let connection = connections.first(where: { $0.id == connectionId }) {
-                deleteNodeAndDescendants(nodeId: connection.toNodeId)
-            }
-            selectedConnectionId = nil
-        }
-    }
-    
-    private func deleteNodeAndDescendants(nodeId: UUID) {
-        let childConnections = connections.filter { $0.fromNodeId == nodeId }
-        for conn in childConnections {
-            deleteNodeAndDescendants(nodeId: conn.toNodeId)
-        }
-        connections.removeAll { $0.toNodeId == nodeId || $0.fromNodeId == nodeId }
-        nodes.removeAll { $0.id == nodeId }
-    }
-    
-    // MARK: - 下書き保存
-    private func saveDraft() {
-        // 上限チェック
-        guard draftManager.canSaveMoreDrafts else {
-            showDraftLimitAlert = true
-            return
+    private func saveHistory() {
+        let state = MindMapState(nodes: nodes, connections: connections, centerNodeText: centerNodeText)
+        
+        if historyIndex < history.count - 1 {
+            history = Array(history.prefix(historyIndex + 1))
         }
         
-        // DraftNodeに変換
+        history.append(state)
+        
+        if history.count > 20 {
+            history.removeFirst()
+        }
+        
+        historyIndex = history.count - 1
+    }
+    
+    private func undo() {
+        guard historyIndex > 0 else { return }
+        historyIndex -= 1
+        let state = history[historyIndex]
+        nodes = state.nodes
+        connections = state.connections
+        centerNodeText = state.centerNodeText
+    }
+    
+    private func saveDraft() {
         let draftNodes = nodes.map { node in
             DraftNode(
                 id: node.id,
                 text: node.isCenter ? centerNodeText : node.text,
-                reason: nil,
                 positionX: node.positionX,
                 positionY: node.positionY,
                 isCenter: node.isCenter
             )
         }
         
-        // DraftConnectionに変換
         let draftConnections = connections.map { conn in
             DraftConnection(
                 id: conn.id,
                 fromNodeId: conn.fromNodeId,
-                toNodeId: conn.toNodeId
+                toNodeId: conn.toNodeId,
+                reason: conn.reason
             )
         }
         
-        // 下書きを作成
         let draft = DraftPost(
+            id: UUID(),
             centerNodeText: centerNodeText,
             nodes: draftNodes,
-            connections: draftConnections
+            connections: draftConnections,
+            createdAt: Date(),
+            updatedAt: Date()
         )
         
-        // 保存
-        if draftManager.saveDraft(draft) {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-            showDraftSavedAlert = true
-        } else {
-            showDraftLimitAlert = true
-        }
+        DraftManager.shared.saveDraft(draft)
+        HapticManager.shared.success()
+        dismiss()
     }
     
-    // MARK: - Supabaseに投稿
     private func postToSupabase() {
         isPosting = true
         
@@ -360,10 +343,7 @@ struct CreatePostView: View {
                 
                 await MainActor.run {
                     isPosting = false
-                    
-                    // ✅ ハプティック追加
                     HapticManager.shared.success()
-                    
                     NotificationCenter.default.post(name: .postCreated, object: nil)
                     dismiss()
                 }
@@ -379,52 +359,12 @@ struct CreatePostView: View {
     }
 }
 
-
-
-// MARK: - 理由ポップアップ
-struct ReasonPopupView: View {
-    let reason: String
-    let onDismiss: () -> Void
-    
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture { onDismiss() }
-            
-            VStack(spacing: 16) {
-                HStack {
-                    Text("理由")
-                        .font(.headline)
-                        .foregroundColor(.purple)
-                    Spacer()
-                    Button(action: onDismiss) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.gray)
-                    }
-                }
-                
-                Text(reason)
-                    .font(.body)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.2), radius: 20)
-            )
-            .padding(.horizontal, 32)
-        }
-    }
-}
-
-// MARK: - 中心ノード入力画面
+// MARK: - 中心ノード入力View
 struct CenterNodeInputView: View {
     @Binding var centerNodeText: String
     var onConfirm: () -> Void
+    
+    @FocusState private var isFocused: Bool
     
     var body: some View {
         VStack(spacing: 32) {
@@ -453,6 +393,13 @@ struct CenterNodeInputView: View {
                 .background(Color(.secondarySystemBackground))
                 .cornerRadius(16)
                 .padding(.horizontal, 32)
+                .focused($isFocused)
+                .submitLabel(.done)
+                .onSubmit {
+                    if !centerNodeText.trimmingCharacters(in: .whitespaces).isEmpty {
+                        onConfirm()
+                    }
+                }
             
             Button(action: onConfirm) {
                 Text("作成開始")
@@ -461,7 +408,7 @@ struct CenterNodeInputView: View {
                     .frame(height: 50)
                     .background(
                         LinearGradient(
-                            colors: centerNodeText.isEmpty ? [.gray] : [.purple, .pink],
+                            colors: centerNodeText.trimmingCharacters(in: .whitespaces).isEmpty ? [.gray] : [.purple, .pink],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
@@ -475,425 +422,721 @@ struct CenterNodeInputView: View {
             Spacer()
             Spacer()
         }
-    }
-}
-
-// MARK: - ビジュアルモード用ツールバー
-struct VisualToolbar: View {
-    let hasSelection: Bool
-    let onAdd: () -> Void
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-    
-    var body: some View {
-        HStack(spacing: 20) {
-            Spacer()
-            
-            Button(action: onAdd) {
-                VStack(spacing: 4) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title2)
-                    Text("追加")
-                        .font(.caption2)
-                }
-            }
-            .disabled(!hasSelection)
-            .foregroundColor(hasSelection ? .purple : .gray)
-            
-            Button(action: onEdit) {
-                VStack(spacing: 4) {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.title2)
-                    Text("編集")
-                        .font(.caption2)
-                }
-            }
-            .disabled(!hasSelection)
-            .foregroundColor(hasSelection ? .purple : .gray)
-            
-            Button(action: onDelete) {
-                VStack(spacing: 4) {
-                    Image(systemName: "trash.circle.fill")
-                        .font(.title2)
-                    Text("削除")
-                        .font(.caption2)
-                }
-            }
-            .disabled(!hasSelection)
-            .foregroundColor(hasSelection ? .red : .gray)
-            
-            Spacer()
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isFocused = false
         }
-        .padding(.vertical, 12)
-        .background(Color(.secondarySystemBackground))
     }
 }
 
 // MARK: - テキストモードView
 struct TextModeView: View {
-    let centerNodeText: String
-    @Binding var nodes: [EditableNode]
-    @Binding var connections: [EditableConnection]
-    var onEditCenterNode: () -> Void
+    @Binding var centerNodeText: String
+    @Binding var nodes: [StyledNode]
+    @Binding var connections: [StyledConnection]
+    let scale: CGFloat
+    var onSaveHistory: () -> Void
+    
+    @State private var expandedNodes: Set<UUID> = []
+    @State private var selectedNodeId: UUID? = nil
+    @State private var showingReasonForNodeId: UUID? = nil
+    @State private var isFullyExpanded = true
+    
+    @State private var showNodeEditor = false
+    @State private var editingNodeIndex: Int? = nil
+    @State private var editingConnectionIndex: Int? = nil
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                CenterNodeRow(
-                    text: centerNodeText,
-                    onEdit: onEditCenterNode,
-                    onAddChild: { addChildToCenter() }
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3)) {
+                            if isFullyExpanded {
+                                expandedNodes.removeAll()
+                            } else {
+                                expandedNodes = Set(nodes.map { $0.id })
+                            }
+                            isFullyExpanded.toggle()
+                        }
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: isFullyExpanded ? "chevron.up.circle" : "chevron.down.circle")
+                            Text(isFullyExpanded ? "折りたたむ" : "すべて展開")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.purple)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+                
+                TreeRootRow(
+                    text: $centerNodeText,
+                    isExpanded: true,
+                    hasChildren: hasChildren(nodeId: nodes.first(where: { $0.isCenter })?.id),
+                    scale: scale,
+                    nodeIndex: 1,
+                    onToggleExpand: {},
+                    onAddChild: { addChildToCenter() },
+                    onLongPress: { openCenterNodeEditor() }
                 )
                 
-                let centerNode = nodes.first(where: { $0.isCenter })
-                if let centerId = centerNode?.id {
-                    ChildNodesTree(
-                        parentId: centerId,
+                if let centerNode = nodes.first(where: { $0.isCenter }) {
+                    TreeChildNodesView(
+                        parentId: centerNode.id,
                         nodes: $nodes,
                         connections: $connections,
-                        level: 1
+                        expandedNodes: $expandedNodes,
+                        selectedNodeId: $selectedNodeId,
+                        showingReasonForNodeId: $showingReasonForNodeId,
+                        scale: scale,
+                        level: 1,
+                        onAddChild: addChild,
+                        onDeleteNode: deleteNode,
+                        hasChildrenCheck: hasChildren,
+                        getNodeIndex: getNodeIndex,
+                        onLongPressNode: openNodeEditor,
+                        onSaveHistory: onSaveHistory
                     )
                 }
+                
+                Color.clear
+                    .frame(height: 300)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedNodeId = nil
+                        showingReasonForNodeId = nil
+                    }
             }
-            .padding()
+            .padding(.bottom, 100)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedNodeId = nil
+            showingReasonForNodeId = nil
+        }
+        .sheet(isPresented: $showNodeEditor) {
+            if let nodeIndex = editingNodeIndex {
+                NodeStyleEditor(
+                    node: $nodes[nodeIndex],
+                    centerNodeText: $centerNodeText,
+                    connection: editingConnectionIndex != nil ? $connections[editingConnectionIndex!] : nil
+                )
+            }
         }
     }
     
+    private func openCenterNodeEditor() {
+        if let index = nodes.firstIndex(where: { $0.isCenter }) {
+            editingNodeIndex = index
+            editingConnectionIndex = nil
+            showNodeEditor = true
+        }
+    }
+    
+    private func openNodeEditor(nodeId: UUID) {
+        if let index = nodes.firstIndex(where: { $0.id == nodeId }) {
+            editingNodeIndex = index
+            
+            if let connIndex = connections.firstIndex(where: { $0.toNodeId == nodeId }) {
+                editingConnectionIndex = connIndex
+            } else {
+                editingConnectionIndex = nil
+            }
+            
+            showNodeEditor = true
+        }
+    }
+    
+    private func getNodeIndex(nodeId: UUID) -> Int {
+        if let index = nodes.firstIndex(where: { $0.id == nodeId }) {
+            return index + 1
+        }
+        return 0
+    }
+    
+    private func hasChildren(nodeId: UUID?) -> Bool {
+        guard let nodeId = nodeId else { return false }
+        return connections.contains { $0.fromNodeId == nodeId }
+    }
+    
     private func addChildToCenter() {
+        onSaveHistory()
+        
         guard let centerNode = nodes.first(where: { $0.isCenter }) else { return }
         
-        let angle = Double.random(in: 0...(2 * .pi))
-        let distance: Double = 150
+        let existingChildren = connections.filter { $0.fromNodeId == centerNode.id }.count
+        let angles: [Double] = [-Double.pi / 2, -Double.pi / 6, Double.pi / 6, Double.pi * 5 / 6, -Double.pi * 5 / 6]
+        let angleIndex = existingChildren % angles.count
+        let ring = existingChildren / angles.count
+        let angle = angles[angleIndex]
+        
+        let baseDistance: Double = 160
+        let distance = baseDistance + Double(ring) * 100
         let newX = centerNode.positionX + cos(angle) * distance
         let newY = centerNode.positionY + sin(angle) * distance
         
-        let newNode = EditableNode(
+        let newNode = StyledNode(
             id: UUID(),
             text: "",
             positionX: newX,
             positionY: newY,
             isCenter: false,
-            parentId: centerNode.id
+            parentId: centerNode.id,
+            style: .defaultChild,
+            note: ""
         )
         
-        let newConnection = EditableConnection(
+        let newConnection = StyledConnection(
             id: UUID(),
             fromNodeId: centerNode.id,
             toNodeId: newNode.id,
-            reason: ""
+            reason: "",
+            style: .defaultStyle
         )
         
         nodes.append(newNode)
         connections.append(newConnection)
+        expandedNodes.insert(centerNode.id)
     }
-}
-
-// MARK: - 中心ノード行
-struct CenterNodeRow: View {
-    let text: String
-    let onEdit: () -> Void
-    let onAddChild: () -> Void
     
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Circle()
-                    .fill(
-                        LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .frame(width: 16, height: 16)
-                
-                Text(text)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                
-                Spacer()
-                
-                Button(action: onEdit) {
-                    Image(systemName: "pencil")
-                        .foregroundColor(.purple)
-                        .padding(8)
+    private func addChild(parentId: UUID) {
+        onSaveHistory()
+        
+        guard let parentNode = nodes.first(where: { $0.id == parentId }) else { return }
+        
+        let existingChildren = connections.filter { $0.fromNodeId == parentId }.count
+        let spreadAngle: Double = .pi / 4
+        let baseAngle: Double
+        
+        if let parentConnection = connections.first(where: { $0.toNodeId == parentId }),
+           let grandParent = nodes.first(where: { $0.id == parentConnection.fromNodeId }) {
+            baseAngle = atan2(parentNode.positionY - grandParent.positionY, parentNode.positionX - grandParent.positionX)
+        } else {
+            baseAngle = 0
+        }
+        
+        let angleOffset = Double(existingChildren) * spreadAngle - Double(existingChildren) * spreadAngle / 2
+        let angle = baseAngle + angleOffset
+        let distance: Double = 120
+        
+        let newX = parentNode.positionX + cos(angle) * distance
+        let newY = parentNode.positionY + sin(angle) * distance
+        
+        let newNode = StyledNode(
+            id: UUID(),
+            text: "",
+            positionX: newX,
+            positionY: newY,
+            isCenter: false,
+            parentId: parentId,
+            style: .defaultChild,
+            note: ""
+        )
+        
+        let newConnection = StyledConnection(
+            id: UUID(),
+            fromNodeId: parentId,
+            toNodeId: newNode.id,
+            reason: "",
+            style: .defaultStyle
+        )
+        
+        nodes.append(newNode)
+        connections.append(newConnection)
+        expandedNodes.insert(parentId)
+    }
+    
+    private func deleteNode(nodeId: UUID) {
+        onSaveHistory()
+        
+        var nodesToDelete: Set<UUID> = [nodeId]
+        var changed = true
+        
+        while changed {
+            changed = false
+            for conn in connections {
+                if nodesToDelete.contains(conn.fromNodeId) && !nodesToDelete.contains(conn.toNodeId) {
+                    nodesToDelete.insert(conn.toNodeId)
+                    changed = true
                 }
-            }
-            
-            Button(action: onAddChild) {
-                HStack {
-                    Image(systemName: "plus.circle")
-                    Text("枝を追加")
-                }
-                .font(.subheadline)
-                .foregroundColor(.purple)
-                .padding(.leading, 24)
             }
         }
-        .padding(.vertical, 8)
+        
+        nodes.removeAll { nodesToDelete.contains($0.id) }
+        connections.removeAll { nodesToDelete.contains($0.fromNodeId) || nodesToDelete.contains($0.toNodeId) }
     }
 }
 
-// MARK: - 子ノードツリー（再帰）
-struct ChildNodesTree: View {
-    let parentId: UUID
-    @Binding var nodes: [EditableNode]
-    @Binding var connections: [EditableConnection]
-    let level: Int
+// MARK: - ルート行
+struct TreeRootRow: View {
+    @Binding var text: String
+    let isExpanded: Bool
+    let hasChildren: Bool
+    let scale: CGFloat
+    let nodeIndex: Int
+    let onToggleExpand: () -> Void
+    let onAddChild: () -> Void
+    let onLongPress: () -> Void
     
-    var childConnections: [EditableConnection] {
+    var body: some View {
+        HStack(spacing: 4 * scale) {
+            Button(action: onToggleExpand) {
+                if hasChildren {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 12 * scale, weight: .bold))
+                        .foregroundColor(.secondary)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: 16 * scale)
+            .disabled(!hasChildren)
+            
+            ZStack {
+                Image(systemName: "folder.fill")
+                    .font(.system(size: 18 * scale))
+                    .foregroundColor(.purple)
+                
+                Text("\(nodeIndex)")
+                    .font(.system(size: 8 * scale, weight: .bold))
+                    .foregroundColor(.white)
+                    .offset(y: 1)
+            }
+            
+            TextField("テーマを入力", text: $text)
+                .font(.system(size: 14 * scale, weight: .semibold))
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            Button(action: onAddChild) {
+                Image(systemName: "plus.circle")
+                    .font(.system(size: 18 * scale))
+                    .foregroundColor(.purple.opacity(0.6))
+            }
+            .padding(.trailing, 4)
+        }
+        .padding(.vertical, 8 * scale)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.purple.opacity(0.1))
+        )
+        .padding(.horizontal, 12)
+        .contentShape(Rectangle())
+        .onLongPressGesture(minimumDuration: 0.5) {
+            HapticManager.shared.lightImpact()
+            onLongPress()
+        }
+    }
+}
+
+// MARK: - 子ノード表示View
+struct TreeChildNodesView: View {
+    let parentId: UUID
+    @Binding var nodes: [StyledNode]
+    @Binding var connections: [StyledConnection]
+    @Binding var expandedNodes: Set<UUID>
+    @Binding var selectedNodeId: UUID?
+    @Binding var showingReasonForNodeId: UUID?
+    let scale: CGFloat
+    let level: Int
+    let onAddChild: (UUID) -> Void
+    let onDeleteNode: (UUID) -> Void
+    let hasChildrenCheck: (UUID?) -> Bool
+    let getNodeIndex: (UUID) -> Int
+    let onLongPressNode: (UUID) -> Void
+    var onSaveHistory: () -> Void
+    
+    var childConnections: [StyledConnection] {
         connections.filter { $0.fromNodeId == parentId }
     }
     
     var body: some View {
         ForEach(childConnections) { connection in
             if let nodeIndex = nodes.firstIndex(where: { $0.id == connection.toNodeId }) {
-                ChildNodeRow(
-                    node: $nodes[nodeIndex],
-                    connection: Binding(
-                        get: { connections.first(where: { $0.id == connection.id }) ?? connection },
-                        set: { newValue in
-                            if let idx = connections.firstIndex(where: { $0.id == connection.id }) {
-                                connections[idx] = newValue
-                            }
-                        }
-                    ),
-                    level: level,
-                    onAddChild: { addChild(to: nodes[nodeIndex].id) },
-                    onDelete: { deleteNode(nodes[nodeIndex].id) }
-                )
+                let node = nodes[nodeIndex]
+                let hasChildren = hasChildrenCheck(node.id)
+                let isExpanded = expandedNodes.contains(node.id)
+                let isSelected = selectedNodeId == node.id
+                let isShowingReason = showingReasonForNodeId == node.id
                 
-                ChildNodesTree(
-                    parentId: nodes[nodeIndex].id,
-                    nodes: $nodes,
-                    connections: $connections,
-                    level: level + 1
-                )
+                VStack(alignment: .leading, spacing: 0) {
+                    TreeNodeRow(
+                        node: $nodes[nodeIndex],
+                        connection: connectionBinding(for: connection.id),
+                        isSelected: isSelected,
+                        hasChildren: hasChildren,
+                        isExpanded: isExpanded,
+                        isShowingReason: isShowingReason,
+                        scale: scale,
+                        level: level,
+                        nodeIndex: getNodeIndex(node.id),
+                        onSelect: {
+                            selectedNodeId = node.id
+                        },
+                        onToggleExpand: {
+                            withAnimation(.spring(response: 0.3)) {
+                                if expandedNodes.contains(node.id) {
+                                    expandedNodes.remove(node.id)
+                                } else {
+                                    expandedNodes.insert(node.id)
+                                }
+                            }
+                        },
+                        onToggleReason: {
+                            withAnimation(.spring(response: 0.3)) {
+                                if showingReasonForNodeId == node.id {
+                                    showingReasonForNodeId = nil
+                                } else {
+                                    showingReasonForNodeId = node.id
+                                }
+                            }
+                        },
+                        onAddChild: { onAddChild(node.id) },
+                        onDelete: { onDeleteNode(node.id) },
+                        onLongPress: { onLongPressNode(node.id) },
+                        onSaveHistory: onSaveHistory
+                    )
+                    
+                    if isShowingReason {
+                        ConnectionReasonInput(
+                            connection: connectionBinding(for: connection.id),
+                            scale: scale,
+                            level: level
+                        )
+                    }
+                }
+                
+                if isExpanded {
+                    TreeChildNodesView(
+                        parentId: node.id,
+                        nodes: $nodes,
+                        connections: $connections,
+                        expandedNodes: $expandedNodes,
+                        selectedNodeId: $selectedNodeId,
+                        showingReasonForNodeId: $showingReasonForNodeId,
+                        scale: scale,
+                        level: level + 1,
+                        onAddChild: onAddChild,
+                        onDeleteNode: onDeleteNode,
+                        hasChildrenCheck: hasChildrenCheck,
+                        getNodeIndex: getNodeIndex,
+                        onLongPressNode: onLongPressNode,
+                        onSaveHistory: onSaveHistory
+                    )
+                }
             }
         }
     }
     
-    private func addChild(to parentId: UUID) {
-        guard let parentNode = nodes.first(where: { $0.id == parentId }) else { return }
-        
-        let angle = Double.random(in: 0...(2 * .pi))
-        let distance: Double = 120
-        let newX = parentNode.positionX + cos(angle) * distance
-        let newY = parentNode.positionY + sin(angle) * distance
-        
-        let newNode = EditableNode(
-            id: UUID(),
-            text: "",
-            positionX: newX,
-            positionY: newY,
-            isCenter: false,
-            parentId: parentId
+    private func connectionBinding(for connectionId: UUID) -> Binding<StyledConnection> {
+        Binding(
+            get: {
+                connections.first(where: { $0.id == connectionId }) ?? StyledConnection(
+                    id: connectionId,
+                    fromNodeId: UUID(),
+                    toNodeId: UUID(),
+                    reason: "",
+                    style: .defaultStyle
+                )
+            },
+            set: { newValue in
+                if let idx = connections.firstIndex(where: { $0.id == connectionId }) {
+                    connections[idx] = newValue
+                }
+            }
         )
-        
-        let newConnection = EditableConnection(
-            id: UUID(),
-            fromNodeId: parentId,
-            toNodeId: newNode.id,
-            reason: ""
-        )
-        
-        nodes.append(newNode)
-        connections.append(newConnection)
-    }
-    
-    private func deleteNode(_ nodeId: UUID) {
-        let childConns = connections.filter { $0.fromNodeId == nodeId }
-        for conn in childConns {
-            deleteNode(conn.toNodeId)
-        }
-        connections.removeAll { $0.toNodeId == nodeId || $0.fromNodeId == nodeId }
-        nodes.removeAll { $0.id == nodeId }
     }
 }
 
-// MARK: - 子ノード行（矢印付き）
-struct ChildNodeRow: View {
-    @Binding var node: EditableNode
-    @Binding var connection: EditableConnection
+// MARK: - ノード行
+struct TreeNodeRow: View {
+    @Binding var node: StyledNode
+    @Binding var connection: StyledConnection
+    let isSelected: Bool
+    let hasChildren: Bool
+    let isExpanded: Bool
+    let isShowingReason: Bool
+    let scale: CGFloat
     let level: Int
+    let nodeIndex: Int
+    let onSelect: () -> Void
+    let onToggleExpand: () -> Void
+    let onToggleReason: () -> Void
     let onAddChild: () -> Void
     let onDelete: () -> Void
+    let onLongPress: () -> Void
+    var onSaveHistory: () -> Void
     
-    @State private var nodeText: String = ""
-    @State private var reasonText: String = ""
+    var hasReason: Bool {
+        !connection.reason.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var linkIconColor: Color {
+        if isShowingReason {
+            return .pink
+        } else if hasReason {
+            return .orange
+        } else {
+            return .purple.opacity(0.4)
+        }
+    }
+    
+    var iconColor: Color {
+        if isSelected {
+            return .blue
+        } else if node.hasNote {
+            return .orange
+        } else if hasChildren {
+            return .orange
+        } else {
+            return .purple
+        }
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .center, spacing: 4) {
-                HStack(spacing: 0) {
-                    ForEach(0..<level, id: \.self) { i in
-                        if i == level - 1 {
-                            HStack(spacing: 2) {
-                                Rectangle()
-                                    .fill(Color.purple.opacity(0.5))
-                                    .frame(width: 16, height: 2)
-                                Image(systemName: "arrowtriangle.right.fill")
-                                    .font(.system(size: 8))
-                                    .foregroundColor(.purple.opacity(0.7))
-                            }
-                            .frame(width: 24)
-                        } else {
-                            Rectangle()
-                                .fill(Color.purple.opacity(0.3))
-                                .frame(width: 2, height: 50)
-                                .padding(.leading, 8)
-                                .padding(.trailing, 14)
-                        }
-                    }
-                }
-                
-                Circle()
-                    .stroke(Color.purple, lineWidth: 2)
-                    .frame(width: 14, height: 14)
-                
-                TextField("ノード名を入力", text: $nodeText)
-                    .font(.subheadline)
-                    .onAppear { nodeText = node.text }
-                    .onChange(of: nodeText) { _, newValue in
-                        node.text = newValue
-                    }
-                
-                Spacer()
-                
-                Button(action: onAddChild) {
-                    Image(systemName: "plus")
-                        .font(.caption)
-                        .foregroundColor(.purple)
-                        .padding(6)
-                }
-                
-                Button(action: onDelete) {
-                    Image(systemName: "xmark")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                        .padding(6)
+        HStack(spacing: 4 * scale) {
+            ForEach(0..<level, id: \.self) { i in
+                if i == level - 1 {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12 * scale, weight: .bold))
+                        .foregroundColor(.purple.opacity(0.7))
+                        .frame(width: 16 * scale)
+                } else {
+                    Rectangle()
+                        .fill(Color.purple.opacity(0.3))
+                        .frame(width: 2)
+                        .padding(.horizontal, 7 * scale)
                 }
             }
             
-            HStack(spacing: 0) {
-                ForEach(0..<level, id: \.self) { _ in
-                    Color.clear.frame(width: 24)
+            Button(action: onToggleExpand) {
+                if hasChildren {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 12 * scale, weight: .bold))
+                        .foregroundColor(.secondary)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: 16 * scale)
+            .disabled(!hasChildren)
+            
+            ZStack {
+                Image(systemName: hasChildren ? "folder.fill" : "doc.fill")
+                    .font(.system(size: 18 * scale))
+                    .foregroundColor(iconColor)
+                
+                Text("\(nodeIndex)")
+                    .font(.system(size: 8 * scale, weight: .bold))
+                    .foregroundColor(.white)
+                    .offset(y: 1)
+                
+                if node.hasNote {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 8 * scale, height: 8 * scale)
+                        .offset(x: 10 * scale, y: -8 * scale)
+                }
+            }
+            
+            TextField("ノード名を入力", text: $node.text, onEditingChanged: { isEditing in
+                if !isEditing {
+                    onSaveHistory()
+                }
+            })
+                .font(.system(size: 14 * scale))
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            HStack(spacing: 6 * scale) {
+                Button(action: onToggleReason) {
+                    Image(systemName: hasReason ? "link.circle.fill" : "link.circle")
+                        .font(.system(size: 18 * scale))
+                        .foregroundColor(linkIconColor)
                 }
                 
-                HStack {
-                    Image(systemName: "link")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    TextField("理由（任意）", text: $reasonText)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .onAppear { reasonText = connection.reason }
-                        .onChange(of: reasonText) { _, newValue in
-                            connection.reason = newValue
-                        }
+                Button(action: onAddChild) {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 18 * scale))
+                        .foregroundColor(.purple.opacity(0.6))
                 }
-                .padding(.leading, 20)
+                
+                Button(action: onDelete) {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 18 * scale))
+                        .foregroundColor(.red.opacity(0.6))
+                }
             }
+            .padding(.trailing, 4)
         }
+        .padding(.vertical, 6 * scale)
+        .padding(.horizontal, 8)
+        .padding(.leading, CGFloat(level) * 8 * scale)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+        )
+        .padding(.horizontal, 12)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onSelect()
+        }
+        .onLongPressGesture(minimumDuration: 0.5) {
+            HapticManager.shared.lightImpact()
+            onLongPress()
+        }
+    }
+}
+
+// MARK: - 接続理由入力
+struct ConnectionReasonInput: View {
+    @Binding var connection: StyledConnection
+    let scale: CGFloat
+    let level: Int
+    
+    var body: some View {
+        HStack(spacing: 4 * scale) {
+            ForEach(0..<level, id: \.self) { _ in
+                Rectangle()
+                    .fill(Color.purple.opacity(0.3))
+                    .frame(width: 2)
+                    .padding(.horizontal, 7 * scale)
+            }
+            
+            HStack(spacing: 8) {
+                Image(systemName: "link")
+                    .font(.system(size: 12))
+                    .foregroundColor(.purple)
+                
+                TextField("なぜつながる？", text: $connection.reason)
+                    .font(.system(size: 12 * scale))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.purple.opacity(0.05))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.purple.opacity(0.2), lineWidth: 1)
+                    )
+            )
+            .padding(.trailing, 60)
+        }
+        .padding(.leading, CGFloat(level) * 8 * scale + 20)
+        .padding(.horizontal, 12)
         .padding(.vertical, 4)
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 }
 
 // MARK: - ビジュアルモードView
 struct VisualModeView: View {
     let centerNodeText: String
-    @Binding var nodes: [EditableNode]
-    @Binding var connections: [EditableConnection]
+    @Binding var nodes: [StyledNode]
+    @Binding var connections: [StyledConnection]
     @Binding var selectedNodeId: UUID?
     @Binding var selectedConnectionId: UUID?
+    @Binding var scale: CGFloat
+    @Binding var offset: CGSize
     var onShowReason: (String) -> Void
+    var onSaveHistory: () -> Void
     
-    @State private var scale: CGFloat = 1.0
-    @State private var lastScale: CGFloat = 1.0
-    @State private var offset: CGSize = .zero
-    @State private var lastOffset: CGSize = .zero
+    @GestureState private var gestureScale: CGFloat = 1.0
+    @GestureState private var gestureOffset: CGSize = .zero
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 Color(.systemBackground)
+                    .contentShape(Rectangle())
                     .onTapGesture {
                         selectedNodeId = nil
                         selectedConnectionId = nil
                     }
                 
-                ForEach(connections) { connection in
-                    EditableConnectionLine(
-                        connection: connection,
+                ForEach($connections) { $connection in
+                    StyledConnectionLine(
+                        connection: $connection,
                         nodes: nodes,
+                        centerNodeText: centerNodeText,
                         isSelected: selectedConnectionId == connection.id,
                         onSelect: {
                             selectedConnectionId = connection.id
                             selectedNodeId = nil
-                        },
-                        onShowReason: onShowReason
+                        }
                     )
                 }
                 
-                ForEach($nodes) { $node in
-                    EditableNodeView(
-                        node: $node,
+                ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
+                    StyledNodeView(
+                        node: $nodes[index],
                         centerNodeText: centerNodeText,
                         isSelected: selectedNodeId == node.id,
                         canDrag: selectedNodeId == node.id,
                         onSelect: {
                             selectedNodeId = node.id
                             selectedConnectionId = nil
-                        }
+                        },
+                        nodeIndex: index + 1,
+                        onDragStart: onSaveHistory
                     )
                 }
             }
-            .scaleEffect(scale)
-            .offset(offset)
-            .gesture(
+            .scaleEffect(scale * gestureScale)
+            .offset(
+                x: offset.width + gestureOffset.width,
+                y: offset.height + gestureOffset.height
+            )
+            .simultaneousGesture(
                 MagnificationGesture()
-                    .onChanged { value in
-                        let delta = value / lastScale
-                        lastScale = value
-                        scale = min(max(scale * delta, 0.3), 3.0)
+                    .updating($gestureScale) { value, state, _ in
+                        state = value
                     }
-                    .onEnded { _ in
-                        lastScale = 1.0
+                    .onEnded { value in
+                        scale = min(max(scale * value, 0.3), 3.0)
                     }
             )
             .simultaneousGesture(
-                DragGesture()
-                    .onChanged { value in
-                        if selectedNodeId == nil {
+                DragGesture(minimumDistance: 0)
+                    .updating($gestureOffset) { value, state, _ in
+                        if selectedNodeId == nil && selectedConnectionId == nil {
+                            state = value.translation
+                        }
+                    }
+                    .onEnded { value in
+                        if selectedNodeId == nil && selectedConnectionId == nil {
                             offset = CGSize(
-                                width: lastOffset.width + value.translation.width,
-                                height: lastOffset.height + value.translation.height
+                                width: offset.width + value.translation.width,
+                                height: offset.height + value.translation.height
                             )
                         }
                     }
-                    .onEnded { _ in
-                        lastOffset = offset
-                    }
             )
-            .onTapGesture(count: 2) {
-                withAnimation(.spring()) {
-                    scale = 1.0
-                    offset = .zero
-                    lastOffset = .zero
-                }
-            }
         }
         .clipped()
     }
 }
 
-
-
-// MARK: - 編集可能ノードView
-struct EditableNodeView: View {
-    @Binding var node: EditableNode
+// MARK: - スタイル付きノードView
+struct StyledNodeView: View {
+    @Binding var node: StyledNode
     let centerNodeText: String
     let isSelected: Bool
     let canDrag: Bool
     let onSelect: () -> Void
+    var nodeIndex: Int = 0
+    var onDragStart: (() -> Void)? = nil
     
-    @State private var dragOffset: CGSize = .zero
+    @GestureState private var dragOffset: CGSize = .zero
     
     var displayText: String {
         node.isCenter ? centerNodeText : node.text
@@ -907,57 +1150,86 @@ struct EditableNodeView: View {
         ZStack {
             if isSelected {
                 Circle()
-                    .stroke(Color.pink, lineWidth: 4)
+                    .stroke(Color.blue, lineWidth: 4)
                     .frame(width: nodeSize + 8, height: nodeSize + 8)
             }
             
             Circle()
-                .fill(
-                    node.isCenter
-                        ? LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        : LinearGradient(colors: [Color(.secondarySystemBackground)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
+                .fill(node.style.fillColor.color)
                 .frame(width: nodeSize, height: nodeSize)
                 .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
             
-            if !node.isCenter {
-                Circle()
-                    .stroke(isSelected ? Color.pink : Color.purple.opacity(0.5), lineWidth: 2)
-                    .frame(width: nodeSize, height: nodeSize)
-            }
+            Circle()
+                .stroke(node.style.borderColor.color, lineWidth: 2)
+                .frame(width: nodeSize, height: nodeSize)
             
             Text(displayText)
                 .font(.system(size: node.isCenter ? 14 : 12))
                 .fontWeight(node.isCenter ? .bold : .medium)
-                .foregroundColor(node.isCenter ? .white : .primary)
+                .foregroundColor(node.style.textColor.color)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .padding(8)
                 .frame(width: nodeSize - 16)
+            
+            ZStack {
+                Circle()
+                    .fill(Color.black)
+                    .frame(width: 24, height: 24)
+                
+                Text("\(nodeIndex)")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .offset(x: -(nodeSize / 2) + 8, y: -(nodeSize / 2) + 8)
+            
+            if node.hasNote {
+                ZStack {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 20, height: 20)
+                    
+                    Image(systemName: "doc.text.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(.white)
+                }
+                .offset(x: (nodeSize / 2) - 8, y: -(nodeSize / 2) + 8)
+            }
         }
-        .position(x: node.positionX + dragOffset.width, y: node.positionY + dragOffset.height)
-        .onTapGesture { onSelect() }
-        .gesture(
-            canDrag ? DragGesture()
-                .onChanged { value in
-                    dragOffset = value.translation
+        .position(
+            x: node.positionX + dragOffset.width,
+            y: node.positionY + dragOffset.height
+        )
+        .onTapGesture {
+            onSelect()
+        }
+        .highPriorityGesture(
+            canDrag ?
+            DragGesture(minimumDistance: 1)
+                .updating($dragOffset) { value, state, _ in
+                    if state == .zero {
+                        DispatchQueue.main.async {
+                            onDragStart?()
+                        }
+                    }
+                    state = value.translation
                 }
                 .onEnded { value in
                     node.positionX += value.translation.width
                     node.positionY += value.translation.height
-                    dragOffset = .zero
-                } : nil
+                }
+            : nil
         )
     }
 }
 
-// MARK: - 編集可能接続線View
-struct EditableConnectionLine: View {
-    let connection: EditableConnection
-    let nodes: [EditableNode]
+// MARK: - スタイル付き接続線
+struct StyledConnectionLine: View {
+    @Binding var connection: StyledConnection
+    let nodes: [StyledNode]
+    let centerNodeText: String
     let isSelected: Bool
     let onSelect: () -> Void
-    var onShowReason: (String) -> Void
     
     var body: some View {
         if let fromNode = nodes.first(where: { $0.id == connection.fromNodeId }),
@@ -990,134 +1262,42 @@ struct EditableConnectionLine: View {
                     path.addLine(to: adjustedToPoint)
                 }
                 .stroke(
-                    isSelected ? Color.pink : Color.purple.opacity(0.5),
-                    style: StrokeStyle(lineWidth: isSelected ? 4 : 2, lineCap: .round)
+                    connection.style.lineColor.color,
+                    style: StrokeStyle(lineWidth: connection.style.lineWidth, lineCap: .round)
                 )
                 
-                ArrowHead(
-                    at: adjustedToPoint,
-                    angle: angle,
-                    size: 12,
-                    color: isSelected ? Color.pink : Color.purple.opacity(0.7)
-                )
-                
-                Path { path in
-                    path.move(to: adjustedFromPoint)
-                    path.addLine(to: adjustedToPoint)
-                }
-                .stroke(Color.clear, lineWidth: 30)
-                .contentShape(
+                if isSelected {
                     Path { path in
                         path.move(to: adjustedFromPoint)
                         path.addLine(to: adjustedToPoint)
                     }
-                    .strokedPath(StrokeStyle(lineWidth: 30))
-                )
-                .onTapGesture { onSelect() }
+                    .stroke(Color.blue, style: StrokeStyle(lineWidth: connection.style.lineWidth + 4, lineCap: .round))
+                    .opacity(0.3)
+                }
                 
                 if !connection.reason.isEmpty {
-                    Button(action: {
-                        onShowReason(connection.reason)
-                    }) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.purple)
-                                .frame(width: 24, height: 24)
-                            
-                            Image(systemName: "text.bubble.fill")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white)
-                        }
+                    ZStack {
+                        Circle()
+                            .fill(connection.style.lineColor.color)
+                            .frame(width: 24, height: 24)
+                        
+                        Image(systemName: "text.bubble.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white)
                     }
                     .position(midPoint)
                 }
             }
-        }
-    }
-}
-
-// MARK: - 矢印の頭
-struct ArrowHead: View {
-    let at: CGPoint
-    let angle: CGFloat
-    let size: CGFloat
-    let color: Color
-    
-    var body: some View {
-        Path { path in
-            let arrowAngle: CGFloat = .pi / 6
-            
-            let point1 = CGPoint(
-                x: at.x - size * cos(angle - arrowAngle),
-                y: at.y - size * sin(angle - arrowAngle)
-            )
-            let point2 = CGPoint(
-                x: at.x - size * cos(angle + arrowAngle),
-                y: at.y - size * sin(angle + arrowAngle)
-            )
-            
-            path.move(to: at)
-            path.addLine(to: point1)
-            path.move(to: at)
-            path.addLine(to: point2)
-        }
-        .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-    }
-}
-
-// MARK: - 編集シート
-struct EditTextSheet: View {
-    let title: String
-    @Binding var text: String
-    let onSave: () -> Void
-    
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                TextField("入力...", text: $text)
-                    .font(.title3)
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                
-                Spacer()
-            }
-            .padding(.top, 20)
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("キャンセル") { dismiss() }
+            .contentShape(
+                Path { path in
+                    path.move(to: adjustedFromPoint)
+                    path.addLine(to: adjustedToPoint)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("保存") {
-                        onSave()
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                }
+                .strokedPath(StrokeStyle(lineWidth: 20))
+            )
+            .onTapGesture {
+                onSelect()
             }
         }
-        .presentationDetents([.medium])
     }
-}
-
-// MARK: - データモデル
-struct EditableNode: Identifiable {
-    let id: UUID
-    var text: String
-    var positionX: Double
-    var positionY: Double
-    var isCenter: Bool
-    var parentId: UUID?
-}
-
-struct EditableConnection: Identifiable {
-    let id: UUID
-    let fromNodeId: UUID
-    let toNodeId: UUID
-    var reason: String
 }

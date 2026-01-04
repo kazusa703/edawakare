@@ -12,8 +12,8 @@ struct EditPostView: View {
     @State private var editMode: EditMode = .text
     @State private var nodes: [EditableNode] = []
     @State private var connections: [EditableConnection] = []
-    @State private var existingNodeIds: Set<UUID> = []  // 既存ノードのID
-    @State private var existingConnectionIds: Set<UUID> = []  // 既存コネクションのID
+    @State private var existingNodeIds: Set<UUID> = []
+    @State private var existingConnectionIds: Set<UUID> = []
     
     @State private var selectedNodeId: UUID?
     @State private var selectedConnectionId: UUID?
@@ -40,7 +40,6 @@ struct EditPostView: View {
         NavigationStack {
             ZStack {
                 VStack(spacing: 0) {
-                    // モード切り替え
                     Picker("編集モード", selection: $editMode) {
                         ForEach(EditMode.allCases, id: \.self) { mode in
                             Text(mode.rawValue).tag(mode)
@@ -50,7 +49,6 @@ struct EditPostView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
                     
-                    // ツールバー（ビジュアルモード時）
                     if editMode == .visual {
                         EditVisualToolbar(
                             hasSelection: selectedNodeId != nil || selectedConnectionId != nil,
@@ -61,7 +59,6 @@ struct EditPostView: View {
                         )
                     }
                     
-                    // メインコンテンツ
                     if editMode == .text {
                         EditTextModeView(
                             centerNodeText: post.centerNodeText,
@@ -86,15 +83,13 @@ struct EditPostView: View {
                     }
                 }
                 
-                // 理由ポップアップ
                 if showReasonPopup {
-                    ReasonPopupView(
+                    EditPostReasonPopup(
                         reason: popupReason,
                         onDismiss: { showReasonPopup = false }
                     )
                 }
                 
-                // 保存中オーバーレイ
                 if isSaving {
                     Color.black.opacity(0.3)
                         .ignoresSafeArea()
@@ -119,7 +114,7 @@ struct EditPostView: View {
                 }
             }
             .sheet(isPresented: $showEditSheet) {
-                EditTextSheet(
+                EditPostTextSheet(
                     title: editingType == .node ? "ノードを編集" : "理由を編集",
                     text: $editingText,
                     onSave: saveEdit
@@ -136,31 +131,25 @@ struct EditPostView: View {
         }
     }
     
-    // MARK: - 変更があるかチェック
     private var hasChanges: Bool {
         let newNodes = nodes.filter { !existingNodeIds.contains($0.id) }
         let newConnections = connections.filter { !existingConnectionIds.contains($0.id) }
         return !newNodes.isEmpty || !newConnections.isEmpty
     }
     
-    // MARK: - 選択中のアイテムを削除可能か
     private var canDeleteSelected: Bool {
         if let nodeId = selectedNodeId {
-            // 既存ノードと中心ノードは削除不可
             if existingNodeIds.contains(nodeId) { return false }
             if let node = nodes.first(where: { $0.id == nodeId }), node.isCenter { return false }
             return true
         }
         if let connectionId = selectedConnectionId {
-            // 既存コネクションは削除不可
             return !existingConnectionIds.contains(connectionId)
         }
         return false
     }
     
-    // MARK: - 既存データを読み込み
     private func loadExistingData() {
-        // 既存ノードをEditableNodeに変換
         if let postNodes = post.nodes {
             for node in postNodes {
                 let editableNode = EditableNode(
@@ -176,7 +165,6 @@ struct EditPostView: View {
             }
         }
         
-        // 既存コネクションをEditableConnectionに変換
         if let postConnections = post.connections {
             for conn in postConnections {
                 let editableConn = EditableConnection(
@@ -188,7 +176,6 @@ struct EditPostView: View {
                 connections.append(editableConn)
                 existingConnectionIds.insert(conn.id)
                 
-                // parentIdを設定
                 if let index = nodes.firstIndex(where: { $0.id == conn.toNodeId }) {
                     nodes[index].parentId = conn.fromNodeId
                 }
@@ -196,7 +183,6 @@ struct EditPostView: View {
         }
     }
     
-    // MARK: - 子ノード追加
     private func addChildNode() {
         guard let parentId = selectedNodeId,
               let parentNode = nodes.first(where: { $0.id == parentId }) else { return }
@@ -232,10 +218,8 @@ struct EditPostView: View {
         showEditSheet = true
     }
     
-    // MARK: - 編集開始
     private func startEditing() {
         if let nodeId = selectedNodeId {
-            // 既存ノードは編集不可
             if existingNodeIds.contains(nodeId) { return }
             
             if let node = nodes.first(where: { $0.id == nodeId }) {
@@ -244,7 +228,6 @@ struct EditPostView: View {
                 showEditSheet = true
             }
         } else if let connectionId = selectedConnectionId {
-            // 既存コネクションの理由は編集可能
             if let connection = connections.first(where: { $0.id == connectionId }) {
                 editingText = connection.reason
                 editingType = .connection
@@ -253,7 +236,6 @@ struct EditPostView: View {
         }
     }
     
-    // MARK: - 編集保存
     private func saveEdit() {
         if editingType == .node {
             if let nodeId = selectedNodeId,
@@ -269,10 +251,8 @@ struct EditPostView: View {
         showEditSheet = false
     }
     
-    // MARK: - 削除
     private func deleteSelected() {
         if let nodeId = selectedNodeId {
-            // 既存ノードは削除不可
             if existingNodeIds.contains(nodeId) { return }
             
             if let node = nodes.first(where: { $0.id == nodeId }), node.isCenter { return }
@@ -280,7 +260,6 @@ struct EditPostView: View {
             deleteNodeAndDescendants(nodeId: nodeId)
             selectedNodeId = nil
         } else if let connectionId = selectedConnectionId {
-            // 既存コネクションは削除不可
             if existingConnectionIds.contains(connectionId) { return }
             
             if let connection = connections.first(where: { $0.id == connectionId }) {
@@ -291,7 +270,6 @@ struct EditPostView: View {
     }
     
     private func deleteNodeAndDescendants(nodeId: UUID) {
-        // 既存ノードは削除しない
         if existingNodeIds.contains(nodeId) { return }
         
         let childConnections = connections.filter { $0.fromNodeId == nodeId }
@@ -302,25 +280,20 @@ struct EditPostView: View {
         nodes.removeAll { $0.id == nodeId }
     }
     
-    // MARK: - 変更を保存
     private func saveChanges() {
         isSaving = true
         
         Task {
             do {
-                // 新規ノードのみを保存
                 let newNodes = nodes.filter { !existingNodeIds.contains($0.id) }
                 let newConnections = connections.filter { !existingConnectionIds.contains($0.id) }
                 
-                // ローカルID → サーバーID のマッピング
                 var nodeIdMap: [UUID: UUID] = [:]
                 
-                // 既存ノードのIDはそのまま使用
                 for nodeId in existingNodeIds {
                     nodeIdMap[nodeId] = nodeId
                 }
                 
-                // 新規ノードを保存
                 for node in newNodes {
                     let createdNode = try await PostService.shared.addNode(
                         postId: post.id,
@@ -332,7 +305,6 @@ struct EditPostView: View {
                     nodeIdMap[node.id] = createdNode.id
                 }
                 
-                // 新規コネクションを保存
                 for conn in newConnections {
                     guard let fromId = nodeIdMap[conn.fromNodeId],
                           let toId = nodeIdMap[conn.toNodeId] else { continue }
@@ -425,13 +397,11 @@ struct EditTextModeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // 中心ノード（編集不可）
                 EditCenterNodeRow(
                     text: centerNodeText,
                     onAddChild: { addChildToCenter() }
                 )
                 
-                // 子ノードツリー
                 let centerNode = nodes.first(where: { $0.isCenter })
                 if let centerId = centerNode?.id {
                     EditChildNodesTree(
@@ -497,7 +467,6 @@ struct EditCenterNodeRow: View {
                 
                 Spacer()
                 
-                // 中心ノードは編集不可を示すアイコン
                 Image(systemName: "lock.fill")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -594,7 +563,6 @@ struct EditChildNodesTree: View {
     }
     
     private func deleteNode(_ nodeId: UUID) {
-        // 既存ノードは削除不可
         if existingNodeIds.contains(nodeId) { return }
         
         let childConns = connections.filter { $0.fromNodeId == nodeId }
@@ -622,7 +590,6 @@ struct EditChildNodeRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .center, spacing: 4) {
-                // インデント + 矢印
                 HStack(spacing: 0) {
                     ForEach(0..<level, id: \.self) { i in
                         if i == level - 1 {
@@ -645,13 +612,11 @@ struct EditChildNodeRow: View {
                     }
                 }
                 
-                // ノードアイコン（新規は緑、既存は紫）
                 Circle()
                     .stroke(isExistingNode ? Color.purple : Color.green, lineWidth: 2)
                     .background(Circle().fill(isExistingNode ? Color.clear : Color.green.opacity(0.1)))
                     .frame(width: 14, height: 14)
                 
-                // テキスト入力（既存は編集不可）
                 if isExistingNode {
                     Text(node.text)
                         .font(.subheadline)
@@ -668,7 +633,6 @@ struct EditChildNodeRow: View {
                             node.text = newValue
                         }
                     
-                    // 新規バッジ
                     Text("NEW")
                         .font(.caption2)
                         .fontWeight(.bold)
@@ -681,7 +645,6 @@ struct EditChildNodeRow: View {
                 
                 Spacer()
                 
-                // 追加ボタン
                 Button(action: onAddChild) {
                     Image(systemName: "plus")
                         .font(.caption)
@@ -689,7 +652,6 @@ struct EditChildNodeRow: View {
                         .padding(6)
                 }
                 
-                // 削除ボタン（新規のみ）
                 if !isExistingNode {
                     Button(action: onDelete) {
                         Image(systemName: "xmark")
@@ -700,7 +662,6 @@ struct EditChildNodeRow: View {
                 }
             }
             
-            // 理由入力
             HStack(spacing: 0) {
                 ForEach(0..<level, id: \.self) { _ in
                     Color.clear.frame(width: 24)
@@ -750,7 +711,6 @@ struct EditVisualModeView: View {
                         selectedConnectionId = nil
                     }
                 
-                // コネクション
                 ForEach(connections) { connection in
                     EditModeConnectionLine(
                         connection: connection,
@@ -765,7 +725,6 @@ struct EditVisualModeView: View {
                     )
                 }
                 
-                // ノード
                 ForEach($nodes) { $node in
                     EditModeNodeView(
                         node: $node,
@@ -840,14 +799,12 @@ struct EditModeNodeView: View {
     
     var body: some View {
         ZStack {
-            // 選択枠
             if isSelected {
                 Circle()
                     .stroke(Color.pink, lineWidth: 4)
                     .frame(width: nodeSize + 8, height: nodeSize + 8)
             }
             
-            // ノード本体
             Circle()
                 .fill(
                     node.isCenter
@@ -857,7 +814,6 @@ struct EditModeNodeView: View {
                 .frame(width: nodeSize, height: nodeSize)
                 .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
             
-            // 枠線（新規は緑、既存は紫）
             if !node.isCenter {
                 Circle()
                     .stroke(
@@ -867,7 +823,6 @@ struct EditModeNodeView: View {
                     .frame(width: nodeSize, height: nodeSize)
             }
             
-            // テキスト
             Text(displayText)
                 .font(.system(size: node.isCenter ? 14 : 12))
                 .fontWeight(node.isCenter ? .bold : .medium)
@@ -877,7 +832,6 @@ struct EditModeNodeView: View {
                 .padding(8)
                 .frame(width: nodeSize - 16)
             
-            // 新規バッジ
             if !isExisting && !node.isCenter {
                 VStack {
                     HStack {
@@ -896,7 +850,6 @@ struct EditModeNodeView: View {
                 .frame(width: nodeSize, height: nodeSize)
             }
             
-            // ロックアイコン（既存ノード）
             if isExisting && !node.isCenter {
                 VStack {
                     HStack {
@@ -968,7 +921,6 @@ struct EditModeConnectionLine: View {
             )
             
             ZStack {
-                // 線
                 Path { path in
                     path.move(to: adjustedFromPoint)
                     path.addLine(to: adjustedToPoint)
@@ -978,15 +930,13 @@ struct EditModeConnectionLine: View {
                     style: StrokeStyle(lineWidth: isSelected ? 4 : 2, lineCap: .round)
                 )
                 
-                // 矢印
-                ArrowHead(
+                EditPostArrowHead(
                     at: adjustedToPoint,
                     angle: angle,
                     size: 12,
                     color: isSelected ? Color.pink : (isNewConnection ? Color.green : Color.purple.opacity(0.7))
                 )
                 
-                // タップ領域
                 Path { path in
                     path.move(to: adjustedFromPoint)
                     path.addLine(to: adjustedToPoint)
@@ -1001,7 +951,6 @@ struct EditModeConnectionLine: View {
                 )
                 .onTapGesture { onSelect() }
                 
-                // 理由ボタン
                 if !connection.reason.isEmpty {
                     Button(action: { onShowReason(connection.reason) }) {
                         ZStack {
@@ -1018,5 +967,160 @@ struct EditModeConnectionLine: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - EditPost専用の矢印ヘッド
+struct EditPostArrowHead: View {
+    let at: CGPoint
+    let angle: CGFloat
+    let size: CGFloat
+    let color: Color
+    
+    var body: some View {
+        Path { path in
+            let arrowAngle: CGFloat = .pi / 6
+            
+            let point1 = CGPoint(
+                x: at.x - size * cos(angle - arrowAngle),
+                y: at.y - size * sin(angle - arrowAngle)
+            )
+            let point2 = CGPoint(
+                x: at.x - size * cos(angle + arrowAngle),
+                y: at.y - size * sin(angle + arrowAngle)
+            )
+            
+            path.move(to: at)
+            path.addLine(to: point1)
+            path.move(to: at)
+            path.addLine(to: point2)
+        }
+        .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+    }
+}
+
+// MARK: - EditPost専用の理由ポップアップ
+struct EditPostReasonPopup: View {
+    let reason: String
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture { onDismiss() }
+            
+            VStack(spacing: 16) {
+                HStack {
+                    HStack(spacing: 8) {
+                        Image(systemName: "link.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.purple)
+                        
+                        Text("つながりの理由")
+                            .font(.headline)
+                    }
+                    
+                    Spacer()
+                    
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.gray)
+                    }
+                }
+                
+                Divider()
+                
+                Text(reason)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 8)
+            }
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(.systemBackground))
+                    .shadow(color: .black.opacity(0.25), radius: 25)
+            )
+            .padding(.horizontal, 32)
+        }
+    }
+}
+
+// MARK: - EditPost専用のテキスト編集シート
+struct EditPostTextSheet: View {
+    let title: String
+    @Binding var text: String
+    let onSave: () -> Void
+    
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                TextField("入力してください", text: $text)
+                    .font(.body)
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                
+                Spacer()
+            }
+            .padding(.top, 20)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("キャンセル") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("保存") {
+                        onSave()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+}
+
+// MARK: - EditableNode と EditableConnection（このファイル専用）
+struct EditableNode: Identifiable, Equatable {
+    let id: UUID
+    var text: String
+    var positionX: Double
+    var positionY: Double
+    var isCenter: Bool
+    var parentId: UUID?
+    
+    init(id: UUID = UUID(), text: String, positionX: Double, positionY: Double, isCenter: Bool, parentId: UUID? = nil) {
+        self.id = id
+        self.text = text
+        self.positionX = positionX
+        self.positionY = positionY
+        self.isCenter = isCenter
+        self.parentId = parentId
+    }
+}
+
+struct EditableConnection: Identifiable, Equatable {
+    let id: UUID
+    let fromNodeId: UUID
+    let toNodeId: UUID
+    var reason: String
+    
+    init(id: UUID = UUID(), fromNodeId: UUID, toNodeId: UUID, reason: String = "") {
+        self.id = id
+        self.fromNodeId = fromNodeId
+        self.toNodeId = toNodeId
+        self.reason = reason
     }
 }

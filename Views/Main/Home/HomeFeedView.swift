@@ -6,28 +6,18 @@ struct HomeFeedView: View {
     @EnvironmentObject var authService: AuthService
     @StateObject private var viewModel = FeedViewModel()
     @State private var selectedTab = 0
-    @State private var showCreatePost = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("フィード", selection: $selectedTab) {
-                    Text("おすすめ").tag(0)
-                    Text("フォロー中").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                
                 if viewModel.isLoading && viewModel.posts.isEmpty {
-                    // スケルトンローディング
                     HomeFeedSkeleton()
                 } else if currentPosts.isEmpty {
-                    EmptyFeedView(selectedTab: selectedTab)
+                    HomeFeedEmptyView(selectedTab: selectedTab)
                 } else {
                     TabView {
                         ForEach(currentPosts) { post in
-                            PostCardView(post: post)
+                            HomePostCardView(post: post)
                                 .environmentObject(authService)
                         }
                     }
@@ -35,30 +25,39 @@ struct HomeFeedView: View {
                     .ignoresSafeArea(edges: .bottom)
                 }
             }
-            .navigationTitle("枝分かれ")
+            .navigationTitle(selectedTab == 0 ? "おすすめ" : "フォロー中")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("枝分かれ")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        HapticManager.shared.lightImpact()  // ハプティック追加
-                        showCreatePost = true
+                        HapticManager.shared.lightImpact()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedTab = selectedTab == 0 ? 1 : 0
+                        }
                     }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(
-                                LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                            )
-                    }
-                }
-            }
-            .sheet(isPresented: $showCreatePost) {
-                CreatePostView()
-                    .environmentObject(authService)
-                    .onDisappear {
-                        Task {
-                            await loadPosts()
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.purple, .pink],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 40, height: 40)
+                            
+                            Image(systemName: selectedTab == 0 ? "person.2.fill" : "sparkles")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
                         }
                     }
+                }
             }
             .refreshable {
                 await loadPosts()
@@ -72,7 +71,6 @@ struct HomeFeedView: View {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .postCreated)) { _ in
-                print("📬 [HomeFeedView] 新規投稿通知を受信")
                 Task {
                     await viewModel.fetchPosts()
                     if let userId = authService.currentUser?.id {
@@ -81,7 +79,6 @@ struct HomeFeedView: View {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .postDeleted)) { _ in
-                print("📬 [HomeFeedView] 投稿削除通知を受信")
                 Task {
                     await viewModel.fetchPosts()
                     if let userId = authService.currentUser?.id {
@@ -97,8 +94,6 @@ struct HomeFeedView: View {
     }
     
     private func loadPosts() async {
-        print("🟡 [HomeFeed] loadPosts開始 - selectedTab: \(selectedTab)")
-        
         if selectedTab == 0 {
             await viewModel.fetchPosts()
         } else {
@@ -106,13 +101,11 @@ struct HomeFeedView: View {
                 await viewModel.fetchFollowingPosts(userId: userId)
             }
         }
-        
-        print("✅ [HomeFeed] loadPosts完了 - 件数: \(currentPosts.count)")
     }
 }
 
-// MARK: - 空のフィードView
-struct EmptyFeedView: View {
+// MARK: - 空のフィードView（名前変更で重複回避）
+struct HomeFeedEmptyView: View {
     let selectedTab: Int
     
     var body: some View {
@@ -138,8 +131,8 @@ struct EmptyFeedView: View {
     }
 }
 
-// MARK: - 投稿カードView
-struct PostCardView: View {
+// MARK: - 投稿カードView（名前変更で重複回避）
+struct HomePostCardView: View {
     let post: Post
     @EnvironmentObject var authService: AuthService
     @State private var isLiked = false
@@ -150,11 +143,7 @@ struct PostCardView: View {
     @State private var showLikeAnimation = false
     @State private var showReasonPopup = false
     @State private var selectedReason = ""
-    
-    // いいねアニメーション用
     @State private var likeScale: CGFloat = 1.0
-    
-    // ブックマークアニメーション用
     @State private var bookmarkRotation: Double = 0
     @State private var bookmarkScale: CGFloat = 1.0
     
@@ -196,8 +185,7 @@ struct PostCardView: View {
                             )
                     }
                     
-                    // いいねボタン（アニメーション付き）
-                    Button(action: toggleLike) {
+                    Button(action: { toggleLike() }) {
                         VStack(spacing: 4) {
                             Image(systemName: isLiked ? "heart.fill" : "heart")
                                 .font(.title)
@@ -229,8 +217,7 @@ struct PostCardView: View {
                         .foregroundColor(.primary)
                     }
                     
-                    // ブックマークボタン（アニメーション付き）
-                    Button(action: toggleBookmark) {
+                    Button(action: { toggleBookmark() }) {
                         Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                             .font(.title)
                             .foregroundColor(isBookmarked ? .purple : .primary)
@@ -278,7 +265,7 @@ struct PostCardView: View {
                 }
                 
                 if showReasonPopup {
-                    ReasonDisplayPopup(
+                    HomeReasonPopup(
                         reason: selectedReason,
                         onDismiss: { showReasonPopup = false }
                     )
@@ -304,7 +291,7 @@ struct PostCardView: View {
                 .environmentObject(authService)
         }
         .fullScreenCover(isPresented: $showFullMap) {
-            FullMapView(post: post)
+            HomeFullMapView(post: post)
                 .environmentObject(authService)
         }
         .onAppear {
@@ -316,10 +303,8 @@ struct PostCardView: View {
     private func toggleLike() {
         guard let userId = authService.currentUser?.id else { return }
         
-        // ハプティック
         HapticManager.shared.lightImpact()
         
-        // スケールバウンスアニメーション
         withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
             likeScale = 1.3
         }
@@ -349,10 +334,8 @@ struct PostCardView: View {
     private func toggleBookmark() {
         guard let userId = authService.currentUser?.id else { return }
         
-        // ハプティック
         HapticManager.shared.lightImpact()
         
-        // 回転＋スケールアニメーション
         withAnimation(.easeInOut(duration: 0.3)) {
             bookmarkRotation += 360
             bookmarkScale = 1.2
@@ -392,8 +375,8 @@ struct PostCardView: View {
     }
 }
 
-// MARK: - 全画面マップView
-struct FullMapView: View {
+// MARK: - 全画面マップView（名前変更で重複回避）
+struct HomeFullMapView: View {
     let post: Post
     @EnvironmentObject var authService: AuthService
     @Environment(\.dismiss) var dismiss
@@ -416,7 +399,7 @@ struct FullMapView: View {
                 )
                 
                 if showReasonPopup {
-                    ReasonDisplayPopup(
+                    HomeReasonPopup(
                         reason: selectedReason,
                         onDismiss: { showReasonPopup = false }
                     )
@@ -446,189 +429,8 @@ struct FullMapView: View {
     }
 }
 
-// MARK: - マインドマップ表示View（閲覧用）
-struct MindMapDisplayView: View {
-    let post: Post
-    var onShowReason: (String) -> Void
-    
-    @State private var scale: CGFloat = 1.0
-    @State private var lastScale: CGFloat = 1.0
-    @State private var offset: CGSize = .zero
-    @State private var lastOffset: CGSize = .zero
-    
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                ForEach(post.connections ?? []) { connection in
-                    ConnectionDisplayLine(
-                        connection: connection,
-                        nodes: post.nodes ?? [],
-                        onShowReason: onShowReason
-                    )
-                }
-                
-                ForEach(post.nodes ?? []) { node in
-                    NodeDisplayView(node: node, centerText: post.centerNodeText)
-                }
-            }
-            .scaleEffect(scale)
-            .offset(offset)
-            .gesture(
-                MagnificationGesture()
-                    .onChanged { value in
-                        let delta = value / lastScale
-                        lastScale = value
-                        scale = min(max(scale * delta, 0.5), 2.5)
-                    }
-                    .onEnded { _ in
-                        lastScale = 1.0
-                    }
-            )
-            .simultaneousGesture(
-                DragGesture()
-                    .onChanged { value in
-                        offset = CGSize(
-                            width: lastOffset.width + value.translation.width,
-                            height: lastOffset.height + value.translation.height
-                        )
-                    }
-                    .onEnded { _ in
-                        lastOffset = offset
-                    }
-            )
-            .onTapGesture(count: 2) {
-                withAnimation(.spring()) {
-                    scale = 1.0
-                    offset = .zero
-                    lastOffset = .zero
-                }
-            }
-        }
-    }
-}
-
-// MARK: - ノード表示View
-struct NodeDisplayView: View {
-    let node: Node
-    let centerText: String
-    
-    var nodeSize: CGFloat {
-        node.isCenter ? 100 : 80
-    }
-    
-    var displayText: String {
-        node.isCenter ? centerText : node.text
-    }
-    
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    node.isCenter
-                        ? LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                        : LinearGradient(colors: [Color(.secondarySystemBackground)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .frame(width: nodeSize, height: nodeSize)
-                .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
-            
-            if !node.isCenter {
-                Circle()
-                    .stroke(Color.purple.opacity(0.5), lineWidth: 2)
-                    .frame(width: nodeSize, height: nodeSize)
-            }
-            
-            Text(displayText)
-                .font(.system(size: node.isCenter ? 14 : 12))
-                .fontWeight(node.isCenter ? .bold : .medium)
-                .foregroundColor(node.isCenter ? .white : .primary)
-                .multilineTextAlignment(.center)
-                .lineLimit(3)
-                .padding(8)
-                .frame(width: nodeSize - 16)
-        }
-        .position(x: node.positionX, y: node.positionY)
-    }
-}
-
-// MARK: - 接続線表示View
-struct ConnectionDisplayLine: View {
-    let connection: NodeConnection
-    let nodes: [Node]
-    var onShowReason: (String) -> Void
-    
-    var body: some View {
-        if let fromNode = nodes.first(where: { $0.id == connection.fromNodeId }),
-           let toNode = nodes.first(where: { $0.id == connection.toNodeId }) {
-            
-            let fromPoint = CGPoint(x: fromNode.positionX, y: fromNode.positionY)
-            let toPoint = CGPoint(x: toNode.positionX, y: toNode.positionY)
-            
-            let fromRadius: CGFloat = fromNode.isCenter ? 50 : 40
-            let toRadius: CGFloat = toNode.isCenter ? 50 : 40
-            
-            let angle = atan2(toPoint.y - fromPoint.y, toPoint.x - fromPoint.x)
-            let adjustedFromPoint = CGPoint(
-                x: fromPoint.x + cos(angle) * fromRadius,
-                y: fromPoint.y + sin(angle) * fromRadius
-            )
-            let adjustedToPoint = CGPoint(
-                x: toPoint.x - cos(angle) * toRadius,
-                y: toPoint.y - sin(angle) * toRadius
-            )
-            
-            let midPoint = CGPoint(
-                x: (adjustedFromPoint.x + adjustedToPoint.x) / 2,
-                y: (adjustedFromPoint.y + adjustedToPoint.y) / 2
-            )
-            
-            ZStack {
-                Path { path in
-                    path.move(to: adjustedFromPoint)
-                    path.addLine(to: adjustedToPoint)
-                }
-                .stroke(Color.purple.opacity(0.5), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                
-                Path { path in
-                    let arrowAngle: CGFloat = .pi / 6
-                    let arrowSize: CGFloat = 12
-                    
-                    let point1 = CGPoint(
-                        x: adjustedToPoint.x - arrowSize * cos(angle - arrowAngle),
-                        y: adjustedToPoint.y - arrowSize * sin(angle - arrowAngle)
-                    )
-                    let point2 = CGPoint(
-                        x: adjustedToPoint.x - arrowSize * cos(angle + arrowAngle),
-                        y: adjustedToPoint.y - arrowSize * sin(angle + arrowAngle)
-                    )
-                    
-                    path.move(to: adjustedToPoint)
-                    path.addLine(to: point1)
-                    path.move(to: adjustedToPoint)
-                    path.addLine(to: point2)
-                }
-                .stroke(Color.purple.opacity(0.7), style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                
-                if let reason = connection.reason, !reason.isEmpty {
-                    Button(action: { onShowReason(reason) }) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.purple)
-                                .frame(width: 24, height: 24)
-                            
-                            Image(systemName: "text.bubble.fill")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .position(midPoint)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - 理由表示ポップアップ
-struct ReasonDisplayPopup: View {
+// MARK: - 理由表示ポップアップ（HomeFeed専用）
+struct HomeReasonPopup: View {
     let reason: String
     let onDismiss: () -> Void
     
@@ -636,32 +438,33 @@ struct ReasonDisplayPopup: View {
         ZStack {
             Color.black.opacity(0.4)
                 .ignoresSafeArea()
-                .onTapGesture { onDismiss() }
+                .onTapGesture {
+                    onDismiss()
+                }
             
             VStack(spacing: 16) {
                 HStack {
+                    Image(systemName: "link")
+                        .foregroundColor(.purple)
                     Text("つながりの理由")
                         .font(.headline)
-                        .foregroundColor(.purple)
                     Spacer()
                     Button(action: onDismiss) {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                     }
                 }
                 
                 Text(reason)
                     .font(.body)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.2), radius: 20)
-            )
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(16)
+            .shadow(radius: 20)
             .padding(.horizontal, 32)
         }
     }

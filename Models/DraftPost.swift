@@ -52,14 +52,24 @@ struct DraftNode: Identifiable, Codable {
     }
 }
 
-struct DraftConnection: Identifiable, Codable {
+struct DraftConnection: Codable, Identifiable {
     let id: UUID
     let fromNodeId: UUID
     let toNodeId: UUID
+    var reason: String?  // 追加
     
-    init(id: UUID = UUID(), fromNodeId: UUID, toNodeId: UUID) {
+    enum CodingKeys: String, CodingKey {
+        case id
+        case fromNodeId = "from_node_id"
+        case toNodeId = "to_node_id"
+        case reason
+    }
+    
+    // イニシャライザ
+    init(id: UUID, fromNodeId: UUID, toNodeId: UUID, reason: String? = nil) {
         self.id = id
         self.fromNodeId = fromNodeId
         self.toNodeId = toNodeId
+        self.reason = reason
     }
 }

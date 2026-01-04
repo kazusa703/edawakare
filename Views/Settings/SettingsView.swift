@@ -988,8 +988,20 @@ struct DraftsListView: View {
                 List {
                     ForEach(draftManager.drafts) { draft in
                         Button(action: {
+                            print("🟡 [Settings] 下書きタップ開始")
+                            print("🟡 [Settings] draft.id: \(draft.id)")
+                            print("🟡 [Settings] draft.centerNodeText: \(draft.centerNodeText)")
+                            print("🟡 [Settings] draft.nodes.count: \(draft.nodes.count)")
+                            print("🟡 [Settings] draft.connections.count: \(draft.connections.count)")
+                            
+                            // 各ノードの詳細
+                            for (index, node) in draft.nodes.enumerated() {
+                                print("📦 [Settings] DraftNode[\(index)]: id=\(node.id), text=\(node.text), isCenter=\(node.isCenter)")
+                            }
+                            
                             selectedDraft = draft
                             showEditDraft = true
+                            print("✅ [Settings] showEditDraft = true 設定完了")
                         }) {
                             DraftRowView(draft: draft)
                         }
@@ -1015,11 +1027,9 @@ struct DraftsListView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .sheet(isPresented: $showEditDraft) {
-            if let draft = selectedDraft {
-                EditDraftView(draft: draft)
-                    .environmentObject(authService)
-            }
+        // 変更後
+        .fullScreenCover(item: $selectedDraft) { draft in
+            EditDraftView(draft: draft)
         }
         .alert("下書きを削除", isPresented: $showDeleteAlert) {
             Button("キャンセル", role: .cancel) {}

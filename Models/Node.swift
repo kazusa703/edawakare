@@ -10,6 +10,7 @@ struct Node: Identifiable, Codable {
     let positionY: Double
     let isCenter: Bool
     let createdAt: Date
+    var note: String?
     
     enum CodingKeys: String, CodingKey {
         case id

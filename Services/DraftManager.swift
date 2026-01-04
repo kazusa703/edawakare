@@ -1,119 +1,105 @@
 // Services/DraftManager.swift
 
 import Foundation
+import SwiftUI
 import Combine
 
 class DraftManager: ObservableObject {
     static let shared = DraftManager()
     
-    private let draftsKey = "saved_drafts"
-    private let serverSaveCountKey = "server_save_count"
-    private let serverSaveMonthKey = "server_save_month"
-    private let maxDrafts = 12
-    private let maxServerSavesPerMonth = 3
-    
     @Published var drafts: [DraftPost] = []
     
+    private let draftsKey = "saved_drafts"
+    private let serverSaveCountKey = "server_save_count"
+    private let lastResetMonthKey = "last_reset_month"
+    
+    private let maxLocalDrafts = 12
+    private let maxServerSavesPerMonth = 3
+    
     private init() {
-        loadDrafts()
+        loadDraftsFromStorage()
+        checkAndResetMonthlyCount()
     }
     
-    // MARK: - ドラフト操作
+    // MARK: - ローカル保存可能かチェック
+    var canSaveMoreDrafts: Bool {
+        drafts.count < maxLocalDrafts
+    }
     
+    // MARK: - 残りローカル保存枠
+    var remainingDraftSlots: Int {
+        max(0, maxLocalDrafts - drafts.count)
+    }
+    
+    // MARK: - サーバー保存可能かチェック
+    func canSaveToServer() -> Bool {
+        checkAndResetMonthlyCount()
+        return getServerSaveCount() < maxServerSavesPerMonth
+    }
+    
+    // MARK: - 残りサーバー保存回数
+    var remainingServerSaves: Int {
+        checkAndResetMonthlyCount()
+        return max(0, maxServerSavesPerMonth - getServerSaveCount())
+    }
+    
+    // MARK: - 下書き保存
+    @discardableResult
     func saveDraft(_ draft: DraftPost) -> Bool {
-        // 最大数チェック
-        if drafts.count >= maxDrafts && !drafts.contains(where: { $0.id == draft.id }) {
-            return false
-        }
-        
-        // 既存の下書きを更新または新規追加
-        if let index = drafts.firstIndex(where: { $0.id == draft.id }) {
-            var updatedDraft = draft
-            updatedDraft.updatedAt = Date()
-            drafts[index] = updatedDraft
-        } else {
-            drafts.insert(draft, at: 0)
-        }
-        
-        persistDrafts()
+        guard canSaveMoreDrafts else { return false }
+        drafts.insert(draft, at: 0)
+        saveDraftsToStorage()
         return true
     }
     
+    // MARK: - 下書き更新
+    func updateDraft(_ draft: DraftPost) {
+        if let index = drafts.firstIndex(where: { $0.id == draft.id }) {
+            drafts[index] = draft
+            saveDraftsToStorage()
+        }
+    }
+    
+    // MARK: - 下書き削除
     func deleteDraft(id: UUID) {
         drafts.removeAll { $0.id == id }
-        persistDrafts()
+        saveDraftsToStorage()
     }
     
-    func getDraft(id: UUID) -> DraftPost? {
-        return drafts.first { $0.id == id }
-    }
-    
-    var canSaveMoreDrafts: Bool {
-        return drafts.count < maxDrafts
-    }
-    
-    var remainingDraftSlots: Int {
-        return maxDrafts - drafts.count
-    }
-    
-    // MARK: - サーバー保存制限
-    
-    func canSaveToServer() -> Bool {
-        resetMonthlyCountIfNeeded()
-        let count = UserDefaults.standard.integer(forKey: serverSaveCountKey)
-        return count < maxServerSavesPerMonth
-    }
-    
+    // MARK: - サーバー保存カウント増加
     func incrementServerSaveCount() {
-        resetMonthlyCountIfNeeded()
-        let count = UserDefaults.standard.integer(forKey: serverSaveCountKey)
-        UserDefaults.standard.set(count + 1, forKey: serverSaveCountKey)
+        let current = getServerSaveCount()
+        UserDefaults.standard.set(current + 1, forKey: serverSaveCountKey)
     }
     
-    var remainingServerSaves: Int {
-        resetMonthlyCountIfNeeded()
-        let count = UserDefaults.standard.integer(forKey: serverSaveCountKey)
-        return maxServerSavesPerMonth - count
-    }
-    
-    private func resetMonthlyCountIfNeeded() {
-        let currentMonth = getCurrentMonth()
-        let savedMonth = UserDefaults.standard.string(forKey: serverSaveMonthKey) ?? ""
-        
-        if currentMonth != savedMonth {
-            UserDefaults.standard.set(0, forKey: serverSaveCountKey)
-            UserDefaults.standard.set(currentMonth, forKey: serverSaveMonthKey)
-        }
-    }
-    
-    private func getCurrentMonth() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        return formatter.string(from: Date())
-    }
-    
-    // MARK: - 永続化
-    
-    private func loadDrafts() {
-        guard let data = UserDefaults.standard.data(forKey: draftsKey) else {
-            drafts = []
+    // MARK: - Private Methods
+    private func loadDraftsFromStorage() {
+        guard let data = UserDefaults.standard.data(forKey: draftsKey),
+              let decoded = try? JSONDecoder().decode([DraftPost].self, from: data) else {
             return
         }
-        
-        do {
-            drafts = try JSONDecoder().decode([DraftPost].self, from: data)
-        } catch {
-            print("🔴 [DraftManager] 読み込みエラー: \(error)")
-            drafts = []
-        }
+        drafts = decoded
     }
     
-    private func persistDrafts() {
-        do {
-            let data = try JSONEncoder().encode(drafts)
-            UserDefaults.standard.set(data, forKey: draftsKey)
-        } catch {
-            print("🔴 [DraftManager] 保存エラー: \(error)")
+    private func saveDraftsToStorage() {
+        guard let encoded = try? JSONEncoder().encode(drafts) else { return }
+        UserDefaults.standard.set(encoded, forKey: draftsKey)
+    }
+    
+    private func getServerSaveCount() -> Int {
+        UserDefaults.standard.integer(forKey: serverSaveCountKey)
+    }
+    
+    private func checkAndResetMonthlyCount() {
+        let currentMonth = Calendar.current.component(.month, from: Date())
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let currentYearMonth = currentYear * 100 + currentMonth
+        
+        let lastResetMonth = UserDefaults.standard.integer(forKey: lastResetMonthKey)
+        
+        if lastResetMonth != currentYearMonth {
+            UserDefaults.standard.set(0, forKey: serverSaveCountKey)
+            UserDefaults.standard.set(currentYearMonth, forKey: lastResetMonthKey)
         }
     }
 }
