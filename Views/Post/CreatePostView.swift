@@ -13,7 +13,7 @@ struct CreatePostView: View {
     @State private var selectedNodeId: UUID? = nil
     @State private var selectedConnectionId: UUID? = nil
     @State private var isTextMode = true
-    @State private var scale: CGFloat = 1.0
+    @State private var scale: CGFloat = 1.0 // テキストモード専用の拡大率
     @State private var visualScale: CGFloat = 1.0
     @State private var visualOffset: CGSize = .zero
     @State private var isPosting = false
@@ -139,7 +139,22 @@ struct CreatePostView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 12) {
-                        if !isTextMode {
+                        // テキストモード時のみ表示されるズームボタン
+                        if isTextMode {
+                            HStack(spacing: 10) {
+                                Button(action: zoomOut) {
+                                    Image(systemName: "minus.magnifyingglass")
+                                        .font(.system(size: 14))
+                                }
+                                
+                                Button(action: zoomIn) {
+                                    Image(systemName: "plus.magnifyingglass")
+                                        .font(.system(size: 14))
+                                }
+                            }
+                            .foregroundColor(.purple)
+                        } else {
+                            // ビジュアルモード用
                             Button(action: resetZoom) {
                                 Image(systemName: "arrow.counterclockwise")
                                     .font(.system(size: 14))
@@ -151,6 +166,7 @@ struct CreatePostView: View {
                             }
                         }
                         
+                        // 一つ前に戻るボタン
                         Button(action: undo) {
                             Image(systemName: "arrow.uturn.backward")
                                 .font(.system(size: 14))
@@ -239,6 +255,24 @@ struct CreatePostView: View {
     }
     
     // MARK: - Methods
+    
+    private func zoomIn() {
+        if scale < 2.0 {
+            withAnimation(.spring(response: 0.2)) {
+                scale += 0.1
+            }
+            HapticManager.shared.lightImpact()
+        }
+    }
+    
+    private func zoomOut() {
+        if scale > 0.5 {
+            withAnimation(.spring(response: 0.2)) {
+                scale -= 0.1
+            }
+            HapticManager.shared.lightImpact()
+        }
+    }
     
     private func initializeIfNeeded() {
         if nodes.isEmpty {
@@ -989,7 +1023,6 @@ struct TreeNodeRow: View {
         }
     }
     
-    // アイコンの色（詳細ありならオレンジ、なければ紫）
     var iconColor: Color {
         if isSelected {
             return .blue
@@ -1031,7 +1064,7 @@ struct TreeNodeRow: View {
             .disabled(!hasChildren)
             
             ZStack {
-                Image(systemName: hasChildren ? "folder.fill" : "doc.fill")
+                Image(systemName: hasChildren ? "folder.fill" : "square.fill")
                     .font(.system(size: 18 * scale))
                     .foregroundColor(node.hasDetail ? .orange : (hasChildren ? .orange : .purple))
                 
@@ -1276,7 +1309,6 @@ struct StyledNodeView: View {
             }
             .offset(x: -(nodeSize / 2) + 8, y: -(nodeSize / 2) + 8)
             
-            // 詳細ありバッジ
             if node.hasDetail {
                 ZStack {
                     Circle()

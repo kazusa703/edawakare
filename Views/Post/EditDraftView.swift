@@ -15,7 +15,7 @@ struct EditDraftView: View {
     @State private var selectedNodeId: UUID? = nil
     @State private var selectedConnectionId: UUID? = nil
     @State private var isTextMode = true
-    @State private var scale: CGFloat = 1.0
+    @State private var scale: CGFloat = 1.0 // テキストモード専用の拡大率
     @State private var visualScale: CGFloat = 1.0
     @State private var visualOffset: CGSize = .zero
     @State private var isPosting = false
@@ -141,8 +141,23 @@ struct EditDraftView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 12) {
-                        if !isTextMode {
+                    HStack(spacing: 14) {
+                        // 【追加】テキストモード時のズームボタン
+                        if isTextMode {
+                            HStack(spacing: 10) {
+                                Button(action: zoomOut) {
+                                    Image(systemName: "minus.magnifyingglass")
+                                        .font(.system(size: 14))
+                                }
+                                
+                                Button(action: zoomIn) {
+                                    Image(systemName: "plus.magnifyingglass")
+                                        .font(.system(size: 14))
+                                }
+                            }
+                            .foregroundColor(.purple)
+                        } else {
+                            // ビジュアルモード時
                             Button(action: resetZoom) {
                                 Image(systemName: "arrow.counterclockwise")
                                     .font(.system(size: 14))
@@ -250,6 +265,24 @@ struct EditDraftView: View {
     }
     
     // MARK: - Methods
+    
+    private func zoomIn() {
+        if scale < 2.0 {
+            withAnimation(.spring(response: 0.2)) {
+                scale += 0.1
+            }
+            HapticManager.shared.lightImpact()
+        }
+    }
+    
+    private func zoomOut() {
+        if scale > 0.5 {
+            withAnimation(.spring(response: 0.2)) {
+                scale -= 0.1
+            }
+            HapticManager.shared.lightImpact()
+        }
+    }
     
     private func loadDraft() {
         centerNodeText = draft.centerNodeText
@@ -1075,7 +1108,7 @@ struct DraftTreeNodeRow: View {
             .disabled(!hasChildren)
             
             ZStack {
-                Image(systemName: hasChildren ? "folder.fill" : "doc.fill")
+                Image(systemName: hasChildren ? "folder.fill" : "square.fill")
                     .font(.system(size: 18 * scale))
                     .foregroundColor(node.hasDetail ? .orange : (hasChildren ? .orange : .purple))
                 
@@ -1320,7 +1353,6 @@ struct DraftStyledNodeView: View {
             }
             .offset(x: -(nodeSize / 2) + 8, y: -(nodeSize / 2) + 8)
             
-            // 詳細ありバッジ
             if node.hasDetail {
                 ZStack {
                     Circle()
