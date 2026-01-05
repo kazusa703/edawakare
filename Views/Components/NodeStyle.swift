@@ -74,9 +74,13 @@ struct StyledNode: Identifiable, Equatable {
     var isCenter: Bool
     var parentId: UUID?
     var style: NodeStyleData
-    var note: String
+    var detail: String  // ノードの詳細（200文字まで）
     
-    init(id: UUID = UUID(), text: String, positionX: Double, positionY: Double, isCenter: Bool, parentId: UUID? = nil, style: NodeStyleData? = nil, note: String = "") {
+    var hasDetail: Bool {
+        !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    
+    init(id: UUID = UUID(), text: String, positionX: Double, positionY: Double, isCenter: Bool, parentId: UUID? = nil, style: NodeStyleData? = nil, detail: String = "") {
         self.id = id
         self.text = text
         self.positionX = positionX
@@ -84,11 +88,7 @@ struct StyledNode: Identifiable, Equatable {
         self.isCenter = isCenter
         self.parentId = parentId
         self.style = style ?? (isCenter ? .defaultCenter : .defaultChild)
-        self.note = note
-    }
-    
-    var hasNote: Bool {
-        !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        self.detail = detail
     }
 }
 
@@ -126,4 +126,66 @@ struct PresetColors {
     static let lineColors: [Color] = [
         .purple, .pink, .blue, .green, .orange, .red, .gray, .black
     ]
+}
+
+// MARK: - DB保存用スタイルJSON
+struct NodeStyleJSON: Codable {
+    let fillRed: Double
+    let fillGreen: Double
+    let fillBlue: Double
+    let fillOpacity: Double
+    let borderRed: Double
+    let borderGreen: Double
+    let borderBlue: Double
+    let borderOpacity: Double
+    let textRed: Double
+    let textGreen: Double
+    let textBlue: Double
+    let textOpacity: Double
+    
+    init(from style: NodeStyleData) {
+        self.fillRed = style.fillColor.red
+        self.fillGreen = style.fillColor.green
+        self.fillBlue = style.fillColor.blue
+        self.fillOpacity = style.fillColor.opacity
+        self.borderRed = style.borderColor.red
+        self.borderGreen = style.borderColor.green
+        self.borderBlue = style.borderColor.blue
+        self.borderOpacity = style.borderColor.opacity
+        self.textRed = style.textColor.red
+        self.textGreen = style.textColor.green
+        self.textBlue = style.textColor.blue
+        self.textOpacity = style.textColor.opacity
+    }
+    
+    func toNodeStyleData() -> NodeStyleData {
+        NodeStyleData(
+            fillColor: Color(red: fillRed, green: fillGreen, blue: fillBlue, opacity: fillOpacity),
+            borderColor: Color(red: borderRed, green: borderGreen, blue: borderBlue, opacity: borderOpacity),
+            textColor: Color(red: textRed, green: textGreen, blue: textBlue, opacity: textOpacity)
+        )
+    }
+}
+
+struct ConnectionStyleJSON: Codable {
+    let lineRed: Double
+    let lineGreen: Double
+    let lineBlue: Double
+    let lineOpacity: Double
+    let lineWidth: Double
+    
+    init(from style: ConnectionStyleData) {
+        self.lineRed = style.lineColor.red
+        self.lineGreen = style.lineColor.green
+        self.lineBlue = style.lineColor.blue
+        self.lineOpacity = style.lineColor.opacity
+        self.lineWidth = Double(style.lineWidth)
+    }
+    
+    func toConnectionStyleData() -> ConnectionStyleData {
+        ConnectionStyleData(
+            lineColor: Color(red: lineRed, green: lineGreen, blue: lineBlue, opacity: lineOpacity),
+            lineWidth: CGFloat(lineWidth)
+        )
+    }
 }

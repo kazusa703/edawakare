@@ -11,7 +11,8 @@ struct NodeInput {
     let positionX: Double
     let positionY: Double
     let isCenter: Bool
-    var note: String?  // 追加
+    var note: String?
+    var style: String?  // 追加
 }
 
 
@@ -19,6 +20,7 @@ struct ConnectionInput {
     let fromLocalId: String
     let toLocalId: String
     let reason: String?
+    var style: String?
 }
 
 class PostService {
@@ -391,6 +393,8 @@ class PostService {
                 position_y: positionY,
                 is_center: isCenter
             )
+            
+            
             
             let node: Node = try await SupabaseClient.shared.client
                 .from("nodes")

@@ -11,6 +11,7 @@ struct Node: Identifiable, Codable {
     let isCenter: Bool
     let createdAt: Date
     var note: String?
+    var style: String?  // JSONスタイル文字列
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -20,6 +21,8 @@ struct Node: Identifiable, Codable {
         case positionY = "position_y"
         case isCenter = "is_center"
         case createdAt = "created_at"
+        case note
+        case style
     }
     
     init(from decoder: Decoder) throws {
@@ -36,6 +39,9 @@ struct Node: Identifiable, Codable {
         } else {
             createdAt = Date()
         }
+        
+        note = try container.decodeIfPresent(String.self, forKey: .note)
+        style = try container.decodeIfPresent(String.self, forKey: .style)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -46,9 +52,21 @@ struct Node: Identifiable, Codable {
         try container.encode(positionX, forKey: .positionX)
         try container.encode(positionY, forKey: .positionY)
         try container.encode(isCenter, forKey: .isCenter)
+        try container.encodeIfPresent(note, forKey: .note)
+        try container.encodeIfPresent(style, forKey: .style)
     }
     
-    init(id: UUID = UUID(), postId: UUID, text: String, positionX: Double, positionY: Double, isCenter: Bool = false, createdAt: Date = Date()) {
+    init(
+        id: UUID = UUID(),
+        postId: UUID,
+        text: String,
+        positionX: Double,
+        positionY: Double,
+        isCenter: Bool = false,
+        createdAt: Date = Date(),
+        note: String? = nil,
+        style: String? = nil
+    ) {
         self.id = id
         self.postId = postId
         self.text = text
@@ -56,5 +74,7 @@ struct Node: Identifiable, Codable {
         self.positionY = positionY
         self.isCenter = isCenter
         self.createdAt = createdAt
+        self.note = note
+        self.style = style
     }
 }

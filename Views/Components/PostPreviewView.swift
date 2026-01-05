@@ -11,12 +11,10 @@ struct PostPreviewView: View {
     
     @State private var scale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
-    @State private var showNotePopup = false
-    @State private var selectedNote = ""
-    @State private var selectedNodeName = ""
+    @State private var lastOffset: CGSize = .zero
+    @State private var showNumbers = true
     
     @GestureState private var gestureScale: CGFloat = 1.0
-    @GestureState private var gestureOffset: CGSize = .zero
     
     var body: some View {
         NavigationStack {
@@ -39,43 +37,40 @@ struct PostPreviewView: View {
                                 node: node,
                                 centerNodeText: centerNodeText,
                                 nodeIndex: index + 1,
-                                onLongPress: {
-                                    if node.hasNote {
-                                        selectedNote = node.note
-                                        selectedNodeName = node.isCenter ? centerNodeText : node.text
-                                        showNotePopup = true
-                                        HapticManager.shared.lightImpact()
-                                    }
-                                }
+                                showNumber: showNumbers
                             )
                         }
                     }
                     .scaleEffect(scale * gestureScale)
-                    .offset(
-                        x: offset.width + gestureOffset.width,
-                        y: offset.height + gestureOffset.height
-                    )
-                    .simultaneousGesture(
-                        MagnificationGesture()
-                            .updating($gestureScale) { value, state, _ in
-                                state = value
-                            }
-                            .onEnded { value in
-                                scale = min(max(scale * value, 0.3), 3.0)
-                            }
-                    )
-                    .simultaneousGesture(
-                        DragGesture()
-                            .updating($gestureOffset) { value, state, _ in
-                                state = value.translation
-                            }
-                            .onEnded { value in
-                                offset = CGSize(
-                                    width: offset.width + value.translation.width,
-                                    height: offset.height + value.translation.height
-                                )
-                            }
-                    )
+                    .offset(offset)
+                }
+                .gesture(
+                    MagnificationGesture()
+                        .updating($gestureScale) { value, state, _ in
+                            state = value
+                        }
+                        .onEnded { value in
+                            scale = min(max(scale * value, 0.3), 3.0)
+                        }
+                )
+                .simultaneousGesture(
+                    DragGesture()
+                        .onChanged { value in
+                            offset = CGSize(
+                                width: lastOffset.width + value.translation.width,
+                                height: lastOffset.height + value.translation.height
+                            )
+                        }
+                        .onEnded { _ in
+                            lastOffset = offset
+                        }
+                )
+                .onTapGesture(count: 2) {
+                    withAnimation(.spring(response: 0.3)) {
+                        scale = 1.0
+                        offset = .zero
+                        lastOffset = .zero
+                    }
                 }
             }
             .navigationTitle("プレビュー")
@@ -89,19 +84,22 @@ struct PostPreviewView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: resetZoom) {
-                        Image(systemName: "arrow.counterclockwise")
-                            .font(.system(size: 14))
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showNumbers.toggle()
+                            }
+                        }) {
+                            Image(systemName: showNumbers ? "number.circle.fill" : "number.circle")
+                                .font(.system(size: 18))
+                                .foregroundColor(showNumbers ? .purple : .gray)
+                        }
+                        
+                        Button(action: resetZoom) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 14))
+                        }
                     }
-                }
-            }
-            .overlay {
-                if showNotePopup {
-                    NoteDisplayPopup(
-                        nodeName: selectedNodeName,
-                        note: selectedNote,
-                        onDismiss: { showNotePopup = false }
-                    )
                 }
             }
         }
@@ -111,6 +109,7 @@ struct PostPreviewView: View {
         withAnimation(.spring(response: 0.3)) {
             scale = 1.0
             offset = .zero
+            lastOffset = .zero
         }
     }
 }
@@ -120,7 +119,7 @@ struct PreviewNodeView: View {
     let node: StyledNode
     let centerNodeText: String
     let nodeIndex: Int
-    var onLongPress: () -> Void
+    var showNumber: Bool = true
     
     var displayText: String {
         node.isCenter ? centerNodeText : node.text
@@ -150,34 +149,20 @@ struct PreviewNodeView: View {
                 .padding(8)
                 .frame(width: nodeSize - 16)
             
-            ZStack {
-                Circle()
-                    .fill(Color.black)
-                    .frame(width: 24, height: 24)
-                
-                Text("\(nodeIndex)")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
-            }
-            .offset(x: -(nodeSize / 2) + 8, y: -(nodeSize / 2) + 8)
-            
-            if node.hasNote {
+            if showNumber {
                 ZStack {
                     Circle()
-                        .fill(Color.orange)
-                        .frame(width: 20, height: 20)
+                        .fill(Color.black)
+                        .frame(width: 24, height: 24)
                     
-                    Image(systemName: "doc.text.fill")
-                        .font(.system(size: 10))
+                    Text("\(nodeIndex)")
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.white)
                 }
-                .offset(x: (nodeSize / 2) - 8, y: -(nodeSize / 2) + 8)
+                .offset(x: -(nodeSize / 2) + 8, y: -(nodeSize / 2) + 8)
             }
         }
         .position(x: node.positionX, y: node.positionY)
-        .onLongPressGesture(minimumDuration: 0.5) {
-            onLongPress()
-        }
     }
 }
 
@@ -207,14 +192,34 @@ struct PreviewConnectionLine: View {
                 y: toPoint.y - sin(angle) * toRadius
             )
             
-            Path { path in
-                path.move(to: adjustedFromPoint)
-                path.addLine(to: adjustedToPoint)
-            }
-            .stroke(
-                connection.style.lineColor.color,
-                style: StrokeStyle(lineWidth: connection.style.lineWidth, lineCap: .round)
+            let midPoint = CGPoint(
+                x: (adjustedFromPoint.x + adjustedToPoint.x) / 2,
+                y: (adjustedFromPoint.y + adjustedToPoint.y) / 2
             )
+            
+            ZStack {
+                Path { path in
+                    path.move(to: adjustedFromPoint)
+                    path.addLine(to: adjustedToPoint)
+                }
+                .stroke(
+                    connection.style.lineColor.color,
+                    style: StrokeStyle(lineWidth: connection.style.lineWidth, lineCap: .round)
+                )
+                
+                if !connection.reason.isEmpty {
+                    ZStack {
+                        Circle()
+                            .fill(connection.style.lineColor.color)
+                            .frame(width: 24, height: 24)
+                        
+                        Image(systemName: "text.bubble.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white)
+                    }
+                    .position(midPoint)
+                }
+            }
         }
     }
 }

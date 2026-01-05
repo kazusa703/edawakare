@@ -62,7 +62,8 @@
 		ACD314CE2F0A431500E076C4 /* UserProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314CD2F0A431500E076C4 /* UserProfileView.swift */; };
 		ACD314D02F0A4A0700E076C4 /* Mindmapdisplayview.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314CF2F0A4A0700E076C4 /* Mindmapdisplayview.swift */; };
 		ACD314D22F0A51C200E076C4 /* UnifyStyleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314D12F0A51C200E076C4 /* UnifyStyleView.swift */; };
-		ACD314D62F0A79E000E076C4 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314D52F0A79E000E076C4 /* SharedComponents.swift */; };
+		ACD314DA2F0A973C00E076C4 /* FavoriteStyleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314D92F0A973C00E076C4 /* FavoriteStyleEditorView.swift */; };
+		ACD314DC2F0A975B00E076C4 /* StyleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314DB2F0A975B00E076C4 /* StyleManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -116,7 +117,8 @@
 		ACD314CD2F0A431500E076C4 /* UserProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileView.swift; sourceTree = "<group>"; };
 		ACD314CF2F0A4A0700E076C4 /* Mindmapdisplayview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mindmapdisplayview.swift; sourceTree = "<group>"; };
 		ACD314D12F0A51C200E076C4 /* UnifyStyleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifyStyleView.swift; sourceTree = "<group>"; };
-		ACD314D52F0A79E000E076C4 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
+		ACD314D92F0A973C00E076C4 /* FavoriteStyleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteStyleEditorView.swift; sourceTree = "<group>"; };
+		ACD314DB2F0A975B00E076C4 /* StyleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -212,6 +214,7 @@
 				ACD313DB2F04625D00E076C4 /* SupabaseClient.swift */,
 				ACD314AF2F09216500E076C4 /* NotificationSettingsManager.swift */,
 				ACD314B52F09F18600E076C4 /* DraftManager.swift */,
+				ACD314DB2F0A975B00E076C4 /* StyleManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -255,7 +258,6 @@
 				ACD314C32F0A26B800E076C4 /* ConnectionStyleEditor.swift */,
 				ACD314C52F0A26CE00E076C4 /* PostPreviewView.swift */,
 				ACD314D12F0A51C200E076C4 /* UnifyStyleView.swift */,
-				ACD314D52F0A79E000E076C4 /* SharedComponents.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -334,6 +336,7 @@
 			children = (
 				ACD314952F08C30A00E076C4 /* DeepLinkPostView.swift */,
 				ACD314962F08C30A00E076C4 /* SettingsView.swift */,
+				ACD314D92F0A973C00E076C4 /* FavoriteStyleEditorView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -436,9 +439,9 @@
 			files = (
 				ACD313D02F0461C900E076C4 /* Userblockreportservice.swift in Sources */,
 				ACD314B02F09216500E076C4 /* NotificationSettingsManager.swift in Sources */,
+				ACD314DC2F0A975B00E076C4 /* StyleManager.swift in Sources */,
 				ACD313952F045BC400E076C4 /* Post.swift in Sources */,
 				ACD313DC2F04625D00E076C4 /* SupabaseClient.swift in Sources */,
-				ACD314D62F0A79E000E076C4 /* SharedComponents.swift in Sources */,
 				ACD314BE2F09F7F600E076C4 /* AnimatedButtons.swift in Sources */,
 				ACD314002F04C42600E076C4 /* FeedViewModel.swift in Sources */,
 				ACD313D62F0461E800E076C4 /* InteractionService.swift in Sources */,
@@ -458,6 +461,7 @@
 				ACD314D22F0A51C200E076C4 /* UnifyStyleView.swift in Sources */,
 				ACD3149D2F08C30A00E076C4 /* MindMapView.swift in Sources */,
 				ACD3149E2F08C30A00E076C4 /* EditPostView.swift in Sources */,
+				ACD314DA2F0A973C00E076C4 /* FavoriteStyleEditorView.swift in Sources */,
 				ACD314B42F09F17400E076C4 /* DraftPost.swift in Sources */,
 				ACD3149F2F08C30A00E076C4 /* NotificationsView.swift in Sources */,
 				ACD314C62F0A26CE00E076C4 /* PostPreviewView.swift in Sources */,

@@ -9,6 +9,7 @@ struct NodeConnection: Identifiable, Codable {
     let toNodeId: UUID
     var reason: String?
     let createdAt: Date
+    var style: String?
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -17,7 +18,8 @@ struct NodeConnection: Identifiable, Codable {
         case toNodeId = "to_node_id"
         case reason
         case createdAt = "created_at"
-    }
+        case style
+        }
     
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

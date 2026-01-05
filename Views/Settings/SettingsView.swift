@@ -98,6 +98,9 @@ struct SettingsView: View {
             NavigationLink(destination: PrivacySettingsView().environmentObject(authService)) {
                 Label("プライバシー設定", systemImage: "lock")
             }
+            NavigationLink(destination: FavoriteStyleEditorView()) {
+                Label("プリセット編集", systemImage: "paintpalette")
+            }
             NavigationLink(destination: NotificationSettingsView()) {
                 Label("通知設定", systemImage: "bell")
             }

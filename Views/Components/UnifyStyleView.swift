@@ -4,21 +4,18 @@ import SwiftUI
 
 struct UnifyStyleView: View {
     @Environment(\.dismiss) var dismiss
+    @ObservedObject var styleManager = StyleManager.shared
     
     @Binding var nodes: [StyledNode]
     @Binding var connections: [StyledConnection]
     let centerNodeText: String
     
-    // ノードスタイル（Color を使用）
     @State private var fillColor: Color = .purple
     @State private var borderColor: Color = .pink
     @State private var textColor: Color = .white
-    
-    // 線スタイル
     @State private var lineColor: Color = .purple
     @State private var lineWidth: CGFloat = 2.0
     
-    // プリセットカラー
     let colorOptions: [Color] = [
         .purple, .pink, .blue, .green, .orange, .red, .yellow, .cyan, .mint, .indigo,
         Color(.systemGray), .white, .black
@@ -28,6 +25,32 @@ struct UnifyStyleView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
+                    // お気に入りスタイル選択セクション
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("お気に入りスタイル")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 12) {
+                            ForEach(Array(styleManager.favoriteStyles.enumerated()), id: \.element.id) { index, style in
+                                FavoriteStyleButton(
+                                    style: style,
+                                    isConfigured: styleManager.isSlotConfigured(index),
+                                    onTap: {
+                                        applyFavoriteStyle(style)
+                                    }
+                                )
+                            }
+                        }
+                        
+                        Text("タップで適用")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    
                     // ノードの色セクション
                     VStack(alignment: .leading, spacing: 16) {
                         Text("ノードの色")
@@ -35,7 +58,6 @@ struct UnifyStyleView: View {
                             .foregroundColor(.secondary)
                         
                         VStack(spacing: 16) {
-                            // 塗りつぶし
                             UnifyColorPickerRow(
                                 title: "塗りつぶし",
                                 selectedColor: $fillColor,
@@ -44,7 +66,6 @@ struct UnifyStyleView: View {
                             
                             Divider()
                             
-                            // 縁の色
                             UnifyColorPickerRow(
                                 title: "縁の色",
                                 selectedColor: $borderColor,
@@ -53,7 +74,6 @@ struct UnifyStyleView: View {
                             
                             Divider()
                             
-                            // 文字の色
                             UnifyColorPickerRow(
                                 title: "文字の色",
                                 selectedColor: $textColor,
@@ -65,14 +85,13 @@ struct UnifyStyleView: View {
                         .cornerRadius(12)
                     }
                     
-                    // 線の色セクション
+                    // 線のスタイルセクション
                     VStack(alignment: .leading, spacing: 16) {
                         Text("線のスタイル")
                             .font(.headline)
                             .foregroundColor(.secondary)
                         
                         VStack(spacing: 16) {
-                            // 線の色
                             UnifyColorPickerRow(
                                 title: "線の色",
                                 selectedColor: $lineColor,
@@ -81,7 +100,6 @@ struct UnifyStyleView: View {
                             
                             Divider()
                             
-                            // 線の太さ
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text("線の太さ")
@@ -95,26 +113,19 @@ struct UnifyStyleView: View {
                                 Slider(value: $lineWidth, in: 1...6, step: 0.5)
                                     .tint(.purple)
                                 
-                                // 太さプレビュー
                                 HStack {
                                     ForEach([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], id: \.self) { width in
-                                        Button(action: {
-                                            lineWidth = width
-                                        }) {
-                                            RoundedRectangle(cornerRadius: width / 2)
-                                                .fill(lineColor)
-                                                .frame(width: 30, height: width)
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: width / 2)
-                                                        .stroke(lineWidth == width ? Color.blue : Color.clear, lineWidth: 2)
-                                                )
-                                        }
-                                        if width < 6.0 {
-                                            Spacer()
+                                        Button(action: { lineWidth = width }) {
+                                            Text("\(Int(width))")
+                                                .font(.caption)
+                                                .fontWeight(lineWidth == width ? .bold : .regular)
+                                                .foregroundColor(lineWidth == width ? .white : .primary)
+                                                .frame(width: 36, height: 28)
+                                                .background(lineWidth == width ? Color.purple : Color(.tertiarySystemBackground))
+                                                .cornerRadius(6)
                                         }
                                     }
                                 }
-                                .padding(.top, 8)
                             }
                         }
                         .padding()
@@ -129,14 +140,29 @@ struct UnifyStyleView: View {
                             .foregroundColor(.secondary)
                         
                         ZStack {
-                            // 線のプレビュー
+                            // 線
                             Path { path in
-                                path.move(to: CGPoint(x: 100, y: 120))
-                                path.addLine(to: CGPoint(x: 250, y: 120))
+                                path.move(to: CGPoint(x: 100, y: 80))
+                                path.addLine(to: CGPoint(x: 200, y: 80))
                             }
                             .stroke(lineColor, lineWidth: lineWidth)
                             
                             // 親ノード
+                            Circle()
+                                .fill(fillColor)
+                                .frame(width: 70, height: 70)
+                                .overlay(
+                                    Circle()
+                                        .stroke(borderColor, lineWidth: 2)
+                                )
+                                .overlay(
+                                    Text("親")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(textColor)
+                                )
+                                .position(x: 80, y: 80)
+                            
+                            // 子ノード
                             Circle()
                                 .fill(fillColor)
                                 .frame(width: 60, height: 60)
@@ -145,28 +171,13 @@ struct UnifyStyleView: View {
                                         .stroke(borderColor, lineWidth: 2)
                                 )
                                 .overlay(
-                                    Text("親")
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(textColor)
-                                )
-                                .position(x: 80, y: 120)
-                            
-                            // 子ノード
-                            Circle()
-                                .fill(fillColor)
-                                .frame(width: 50, height: 50)
-                                .overlay(
-                                    Circle()
-                                        .stroke(borderColor, lineWidth: 2)
-                                )
-                                .overlay(
                                     Text("子")
-                                        .font(.system(size: 11, weight: .medium))
+                                        .font(.system(size: 12))
                                         .foregroundColor(textColor)
                                 )
-                                .position(x: 270, y: 120)
+                                .position(x: 220, y: 80)
                         }
-                        .frame(height: 200)
+                        .frame(height: 140)
                         .background(Color(.systemBackground))
                         .cornerRadius(12)
                     }
@@ -187,16 +198,15 @@ struct UnifyStyleView: View {
                             .foregroundColor(.white)
                             .cornerRadius(12)
                     }
-                    .padding(.top, 8)
                 }
                 .padding()
             }
             .background(Color(.secondarySystemBackground))
-            .navigationTitle("スタイルを統一")
+            .navigationTitle("統一スタイル")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("閉じる") {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("キャンセル") {
                         dismiss()
                     }
                 }
@@ -204,8 +214,17 @@ struct UnifyStyleView: View {
         }
     }
     
+    private func applyFavoriteStyle(_ style: FavoriteStyle) {
+        fillColor = style.nodeStyle.fillColor
+        borderColor = style.nodeStyle.borderColor
+        textColor = style.nodeStyle.textColor
+        lineColor = style.connectionStyle.lineColor
+        lineWidth = style.connectionStyle.lineWidth
+        
+        HapticManager.shared.lightImpact()
+    }
+    
     private func applyToAll() {
-        // すべてのノードにスタイルを適用
         for index in nodes.indices {
             nodes[index].style = NodeStyleData(
                 fillColor: fillColor,
@@ -214,7 +233,6 @@ struct UnifyStyleView: View {
             )
         }
         
-        // すべての接続線にスタイルを適用
         for index in connections.indices {
             connections[index].style = ConnectionStyleData(
                 lineColor: lineColor,
@@ -222,11 +240,56 @@ struct UnifyStyleView: View {
             )
         }
         
+        HapticManager.shared.success()
         dismiss()
     }
 }
 
-// MARK: - 統一用カラーピッカー行
+// MARK: - お気に入りスタイルボタン
+struct FavoriteStyleButton: View {
+    let style: FavoriteStyle
+    let isConfigured: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(isConfigured ? style.nodeStyle.fillColor : Color(.tertiarySystemBackground))
+                        .frame(width: 50, height: 50)
+                    
+                    if isConfigured {
+                        Circle()
+                            .stroke(style.nodeStyle.borderColor, lineWidth: 2)
+                            .frame(width: 50, height: 50)
+                        
+                        Text("A")
+                            .font(.headline)
+                            .foregroundColor(style.nodeStyle.textColor)
+                    } else {
+                        Image(systemName: "plus")
+                            .font(.title3)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Text(style.name)
+                    .font(.caption2)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(Color(.tertiarySystemBackground))
+            .cornerRadius(12)
+        }
+        .disabled(!isConfigured)
+        .opacity(isConfigured ? 1.0 : 0.5)
+    }
+}
+
+// MARK: - 統一スタイル用カラーピッカー行
 struct UnifyColorPickerRow: View {
     let title: String
     @Binding var selectedColor: Color
@@ -249,7 +312,7 @@ struct UnifyColorPickerRow: View {
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    ForEach(Array(colors.enumerated()), id: \.offset) { index, color in
+                    ForEach(Array(colors.enumerated()), id: \.offset) { _, color in
                         Button(action: {
                             selectedColor = color
                         }) {
@@ -267,7 +330,6 @@ struct UnifyColorPickerRow: View {
         }
     }
     
-    // Color の比較用ヘルパー
     private func isColorEqual(_ c1: Color, _ c2: Color) -> Bool {
         let uiColor1 = UIColor(c1)
         let uiColor2 = UIColor(c2)

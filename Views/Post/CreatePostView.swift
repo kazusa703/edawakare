@@ -8,7 +8,6 @@ struct CreatePostView: View {
     @EnvironmentObject var authService: AuthService
     
     @State private var centerNodeText = ""
-    @State private var showCenterNodeInput = true
     @State private var nodes: [StyledNode] = []
     @State private var connections: [StyledConnection] = []
     @State private var selectedNodeId: UUID? = nil
@@ -23,6 +22,11 @@ struct CreatePostView: View {
     @State private var showPreview = false
     @State private var showUnifyStyle = false
     
+    // 編集シート
+    @State private var showNodeEditor = false
+    @State private var editingNodeIndex: Int? = nil
+    @State private var editingConnectionIndex: Int? = nil
+    
     // 履歴管理
     @State private var history: [MindMapState] = []
     @State private var historyIndex = -1
@@ -31,42 +35,36 @@ struct CreatePostView: View {
     @State private var popupReason = ""
     @State private var showReasonPopup = false
     
+    // 確認ダイアログ
+    @State private var showDeleteConfirm = false
+    @State private var showPostConfirm = false
+    
     private var canPost: Bool {
-        nodes.count >= 2
+        !centerNodeText.trimmingCharacters(in: .whitespaces).isEmpty && nodes.count >= 2
     }
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if showCenterNodeInput {
-                    CenterNodeInputView(
+                // モード切替
+                Picker("モード", selection: $isTextMode) {
+                    Text("テキスト").tag(true)
+                    Text("ビジュアル").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                
+                if isTextMode {
+                    TextModeView(
                         centerNodeText: $centerNodeText,
-                        onConfirm: {
-                            initializeCenterNode()
-                            withAnimation {
-                                showCenterNodeInput = false
-                            }
-                        }
+                        nodes: $nodes,
+                        connections: $connections,
+                        scale: scale,
+                        onSaveHistory: saveHistory
                     )
                 } else {
-                    // モード切替
-                    Picker("モード", selection: $isTextMode) {
-                        Text("テキスト").tag(true)
-                        Text("ビジュアル").tag(false)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    
-                    if isTextMode {
-                        TextModeView(
-                            centerNodeText: $centerNodeText,
-                            nodes: $nodes,
-                            connections: $connections,
-                            scale: scale,
-                            onSaveHistory: saveHistory
-                        )
-                    } else {
+                    ZStack {
                         VisualModeView(
                             centerNodeText: centerNodeText,
                             nodes: $nodes,
@@ -81,75 +79,103 @@ struct CreatePostView: View {
                             },
                             onSaveHistory: saveHistory
                         )
+                        
+                        // フローティング編集ボタン
+                        if selectedNodeId != nil || selectedConnectionId != nil {
+                            VStack {
+                                Spacer()
+                                HStack {
+                                    Spacer()
+                                    
+                                    // 編集ボタン
+                                    Button(action: openSelectedEditor) {
+                                        Image(systemName: "pencil")
+                                            .font(.title2)
+                                            .foregroundColor(.white)
+                                            .frame(width: 56, height: 56)
+                                            .background(Color.purple)
+                                            .clipShape(Circle())
+                                            .shadow(radius: 4)
+                                    }
+                                    
+                                    // 削除ボタン（ノード選択時のみ、中心ノード以外）
+                                    if let nodeId = selectedNodeId,
+                                       let node = nodes.first(where: { $0.id == nodeId }),
+                                       !node.isCenter {
+                                        Button(action: { deleteSelectedNode() }) {
+                                            Image(systemName: "trash")
+                                                .font(.title2)
+                                                .foregroundColor(.white)
+                                                .frame(width: 56, height: 56)
+                                                .background(Color.red)
+                                                .clipShape(Circle())
+                                                .shadow(radius: 4)
+                                        }
+                                    }
+                                }
+                                .padding(.trailing, 20)
+                                .padding(.bottom, 100)
+                            }
+                        }
                     }
                 }
             }
-            .navigationTitle(showCenterNodeInput ? "新規作成" : centerNodeText)
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     HStack(spacing: 12) {
-                        Button(action: { dismiss() }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 16, weight: .medium))
+                        Button(action: { showPreview = true }) {
+                            Image(systemName: "eye")
+                                .font(.system(size: 16))
                         }
-                        .disabled(isPosting)
                         
-                        if !showCenterNodeInput {
-                            Button(action: { showPreview = true }) {
-                                Image(systemName: "eye")
-                                    .font(.system(size: 16))
-                            }
-                            
-                            Button(action: { showUnifyStyle = true }) {
-                                Image(systemName: "paintpalette")
-                                    .font(.system(size: 16))
-                            }
+                        Button(action: { showUnifyStyle = true }) {
+                            Image(systemName: "paintpalette")
+                                .font(.system(size: 16))
                         }
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if !showCenterNodeInput {
-                        HStack(spacing: 12) {
-                            if !isTextMode {
-                                Button(action: resetZoom) {
-                                    Image(systemName: "arrow.counterclockwise")
-                                        .font(.system(size: 14))
-                                }
-                                
-                                Button(action: addNodeToCenter) {
-                                    Image(systemName: "plus.circle")
-                                        .font(.system(size: 16))
-                                }
-                            }
-                            
-                            Button(action: undo) {
-                                Image(systemName: "arrow.uturn.backward")
+                    HStack(spacing: 12) {
+                        if !isTextMode {
+                            Button(action: resetZoom) {
+                                Image(systemName: "arrow.counterclockwise")
                                     .font(.system(size: 14))
                             }
-                            .disabled(historyIndex <= 0)
                             
-                            Button(action: saveDraft) {
-                                Text("下書き")
-                                    .font(.subheadline)
-                            }
-                            
-                            Menu {
-                                Button(action: { showError = true }) {
-                                    Label("設定", systemImage: "gear")
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis")
+                            Button(action: addNodeToCenter) {
+                                Image(systemName: "plus.circle")
                                     .font(.system(size: 16))
                             }
-                            
-                            Button(action: postToSupabase) {
-                                Text("投稿")
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.purple)
+                        }
+                        
+                        Button(action: undo) {
+                            Image(systemName: "arrow.uturn.backward")
+                                .font(.system(size: 14))
+                        }
+                        .disabled(historyIndex <= 0)
+                        
+                        // メニューボタン
+                        Menu {
+                            Button(action: saveDraft) {
+                                Label("下書き保存", systemImage: "square.and.arrow.down")
                             }
-                            .disabled(isPosting || !canPost)
+                            
+                            Button(action: { showPostConfirm = true }) {
+                                Label("投稿", systemImage: "paperplane")
+                            }
+                            .disabled(!canPost)
+                            
+                            Divider()
+                            
+                            Button(role: .destructive, action: { showDeleteConfirm = true }) {
+                                Label("この投稿を削除", systemImage: "trash")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                                .font(.system(size: 18))
                         }
                     }
                 }
@@ -168,38 +194,114 @@ struct CreatePostView: View {
                     centerNodeText: centerNodeText
                 )
             }
+            .sheet(isPresented: $showNodeEditor) {
+                if let nodeIndex = editingNodeIndex {
+                    NodeStyleEditor(
+                        node: $nodes[nodeIndex],
+                        centerNodeText: $centerNodeText,
+                        connection: editingConnectionIndex != nil ? $connections[editingConnectionIndex!] : nil
+                    )
+                }
+            }
             .alert("エラー", isPresented: $showError) {
                 Button("OK") {}
             } message: {
                 Text(errorMessage)
             }
+            .alert("この投稿を削除", isPresented: $showDeleteConfirm) {
+                Button("キャンセル", role: .cancel) {}
+                Button("削除", role: .destructive) {
+                    dismiss()
+                }
+            } message: {
+                Text("この操作は戻れません。削除しますか？")
+            }
+            .alert("投稿確認", isPresented: $showPostConfirm) {
+                Button("キャンセル", role: .cancel) {}
+                Button("投稿") {
+                    postToSupabase()
+                }
+            } message: {
+                Text("投稿を確定してよろしいですか？")
+            }
             .overlay {
                 if showReasonPopup {
-                    ReasonDisplayPopup(
+                    CreatePostReasonPopup(
                         reason: popupReason,
                         onDismiss: { showReasonPopup = false }
                     )
                 }
+            }
+            .onAppear {
+                initializeIfNeeded()
             }
         }
     }
     
     // MARK: - Methods
     
-    private func initializeCenterNode() {
-        let centerNode = StyledNode(
-            id: UUID(),
-            text: centerNodeText,
-            positionX: UIScreen.main.bounds.width / 2,
-            positionY: 300,
-            isCenter: true,
-            parentId: nil,
-            style: .defaultCenter,
-            note: ""
-        )
-        nodes = [centerNode]
-        connections = []
+    private func initializeIfNeeded() {
+        if nodes.isEmpty {
+            let centerNode = StyledNode(
+                id: UUID(),
+                text: "",
+                positionX: UIScreen.main.bounds.width / 2,
+                positionY: 300,
+                isCenter: true,
+                parentId: nil,
+                style: .defaultCenter,
+                detail: ""
+            )
+            nodes.append(centerNode)
+            saveHistory()
+        }
+    }
+    
+    private func openSelectedEditor() {
+        if let nodeId = selectedNodeId,
+           let index = nodes.firstIndex(where: { $0.id == nodeId }) {
+            editingNodeIndex = index
+            
+            if let connIndex = connections.firstIndex(where: { $0.toNodeId == nodeId }) {
+                editingConnectionIndex = connIndex
+            } else {
+                editingConnectionIndex = nil
+            }
+            
+            showNodeEditor = true
+        } else if let connectionId = selectedConnectionId,
+                  let connIndex = connections.firstIndex(where: { $0.id == connectionId }) {
+            let toNodeId = connections[connIndex].toNodeId
+            if let nodeIndex = nodes.firstIndex(where: { $0.id == toNodeId }) {
+                editingNodeIndex = nodeIndex
+                editingConnectionIndex = connIndex
+                showNodeEditor = true
+            }
+        }
+    }
+    
+    private func deleteSelectedNode() {
+        guard let nodeId = selectedNodeId else { return }
         saveHistory()
+        
+        var nodesToDelete: Set<UUID> = [nodeId]
+        var changed = true
+        
+        while changed {
+            changed = false
+            for conn in connections {
+                if nodesToDelete.contains(conn.fromNodeId) && !nodesToDelete.contains(conn.toNodeId) {
+                    nodesToDelete.insert(conn.toNodeId)
+                    changed = true
+                }
+            }
+        }
+        
+        nodes.removeAll { nodesToDelete.contains($0.id) }
+        connections.removeAll { nodesToDelete.contains($0.fromNodeId) || nodesToDelete.contains($0.toNodeId) }
+        selectedNodeId = nil
+        
+        HapticManager.shared.lightImpact()
     }
     
     private func addNodeToCenter() {
@@ -226,7 +328,7 @@ struct CreatePostView: View {
             isCenter: false,
             parentId: centerNode.id,
             style: .defaultChild,
-            note: ""
+            detail: ""
         )
         
         let newConnection = StyledConnection(
@@ -240,6 +342,8 @@ struct CreatePostView: View {
         nodes.append(newNode)
         connections.append(newConnection)
         selectedNodeId = newNode.id
+        
+        HapticManager.shared.lightImpact()
     }
     
     private func resetZoom() {
@@ -272,6 +376,8 @@ struct CreatePostView: View {
         nodes = state.nodes
         connections = state.connections
         centerNodeText = state.centerNodeText
+        
+        HapticManager.shared.lightImpact()
     }
     
     private func saveDraft() {
@@ -313,24 +419,34 @@ struct CreatePostView: View {
         
         Task {
             do {
-                let session = try await SupabaseClient.shared.client.auth.session
-                let userId = session.user.id
+                guard let userId = authService.currentUser?.id else {
+                    throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "ユーザーが見つかりません"])
+                }
                 
                 let nodeInputs = nodes.map { node in
-                    NodeInput(
+                    let styleJSON = NodeStyleJSON(from: node.style)
+                    let styleString = (try? JSONEncoder().encode(styleJSON)).flatMap { String(data: $0, encoding: .utf8) }
+                    
+                    return NodeInput(
                         localId: node.id.uuidString,
                         text: node.isCenter ? centerNodeText : node.text,
                         positionX: node.positionX,
                         positionY: node.positionY,
-                        isCenter: node.isCenter
+                        isCenter: node.isCenter,
+                        note: node.detail.isEmpty ? nil : node.detail,
+                        style: styleString
                     )
                 }
                 
                 let connectionInputs = connections.map { conn in
-                    ConnectionInput(
+                    let styleJSON = ConnectionStyleJSON(from: conn.style)
+                    let styleString = (try? JSONEncoder().encode(styleJSON)).flatMap { String(data: $0, encoding: .utf8) }
+                    
+                    return ConnectionInput(
                         fromLocalId: conn.fromNodeId.uuidString,
                         toLocalId: conn.toNodeId.uuidString,
-                        reason: conn.reason.isEmpty ? nil : conn.reason
+                        reason: conn.reason.isEmpty ? nil : conn.reason,
+                        style: styleString
                     )
                 }
                 
@@ -359,72 +475,41 @@ struct CreatePostView: View {
     }
 }
 
-// MARK: - 中心ノード入力View
-struct CenterNodeInputView: View {
-    @Binding var centerNodeText: String
-    var onConfirm: () -> Void
-    
-    @FocusState private var isFocused: Bool
+// MARK: - 理由ポップアップ（CreatePost専用）
+struct CreatePostReasonPopup: View {
+    let reason: String
+    let onDismiss: () -> Void
     
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture { onDismiss() }
             
             VStack(spacing: 16) {
-                Image(systemName: "point.3.connected.trianglepath.dotted")
-                    .font(.system(size: 60))
-                    .foregroundStyle(
-                        LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                
-                Text("中心となるテーマを入力")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Text("例: ストレンジャー・シングス、進撃の巨人")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            TextField("テーマを入力...", text: $centerNodeText)
-                .font(.title3)
-                .multilineTextAlignment(.center)
-                .padding()
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(16)
-                .padding(.horizontal, 32)
-                .focused($isFocused)
-                .submitLabel(.done)
-                .onSubmit {
-                    if !centerNodeText.trimmingCharacters(in: .whitespaces).isEmpty {
-                        onConfirm()
+                HStack {
+                    Image(systemName: "link")
+                        .foregroundColor(.purple)
+                    Text("つながりの理由")
+                        .font(.headline)
+                    Spacer()
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
                     }
                 }
-            
-            Button(action: onConfirm) {
-                Text("作成開始")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(
-                        LinearGradient(
-                            colors: centerNodeText.trimmingCharacters(in: .whitespaces).isEmpty ? [.gray] : [.purple, .pink],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                
+                Text(reason)
+                    .font(.body)
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .disabled(centerNodeText.trimmingCharacters(in: .whitespaces).isEmpty)
+            .padding()
+            .background(Color(.systemBackground))
+            .cornerRadius(16)
+            .shadow(radius: 20)
             .padding(.horizontal, 32)
-            
-            Spacer()
-            Spacer()
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            isFocused = false
         }
     }
 }
@@ -477,6 +562,7 @@ struct TextModeView: View {
                     text: $centerNodeText,
                     isExpanded: true,
                     hasChildren: hasChildren(nodeId: nodes.first(where: { $0.isCenter })?.id),
+                    hasDetail: nodes.first(where: { $0.isCenter })?.hasDetail ?? false,
                     scale: scale,
                     nodeIndex: 1,
                     onToggleExpand: {},
@@ -566,9 +652,26 @@ struct TextModeView: View {
     private func addChildToCenter() {
         onSaveHistory()
         
-        guard let centerNode = nodes.first(where: { $0.isCenter }) else { return }
+        var centerNode = nodes.first(where: { $0.isCenter })
         
-        let existingChildren = connections.filter { $0.fromNodeId == centerNode.id }.count
+        if centerNode == nil {
+            let newCenterNode = StyledNode(
+                id: UUID(),
+                text: centerNodeText.isEmpty ? "テーマ" : centerNodeText,
+                positionX: UIScreen.main.bounds.width / 2,
+                positionY: 300,
+                isCenter: true,
+                parentId: nil,
+                style: .defaultCenter,
+                detail: ""
+            )
+            nodes.insert(newCenterNode, at: 0)
+            centerNode = newCenterNode
+        }
+        
+        guard let center = centerNode else { return }
+        
+        let existingChildren = connections.filter { $0.fromNodeId == center.id }.count
         let angles: [Double] = [-Double.pi / 2, -Double.pi / 6, Double.pi / 6, Double.pi * 5 / 6, -Double.pi * 5 / 6]
         let angleIndex = existingChildren % angles.count
         let ring = existingChildren / angles.count
@@ -576,8 +679,8 @@ struct TextModeView: View {
         
         let baseDistance: Double = 160
         let distance = baseDistance + Double(ring) * 100
-        let newX = centerNode.positionX + cos(angle) * distance
-        let newY = centerNode.positionY + sin(angle) * distance
+        let newX = center.positionX + cos(angle) * distance
+        let newY = center.positionY + sin(angle) * distance
         
         let newNode = StyledNode(
             id: UUID(),
@@ -585,14 +688,14 @@ struct TextModeView: View {
             positionX: newX,
             positionY: newY,
             isCenter: false,
-            parentId: centerNode.id,
+            parentId: center.id,
             style: .defaultChild,
-            note: ""
+            detail: ""
         )
         
         let newConnection = StyledConnection(
             id: UUID(),
-            fromNodeId: centerNode.id,
+            fromNodeId: center.id,
             toNodeId: newNode.id,
             reason: "",
             style: .defaultStyle
@@ -600,7 +703,7 @@ struct TextModeView: View {
         
         nodes.append(newNode)
         connections.append(newConnection)
-        expandedNodes.insert(centerNode.id)
+        expandedNodes.insert(center.id)
     }
     
     private func addChild(parentId: UUID) {
@@ -634,7 +737,7 @@ struct TextModeView: View {
             isCenter: false,
             parentId: parentId,
             style: .defaultChild,
-            note: ""
+            detail: ""
         )
         
         let newConnection = StyledConnection(
@@ -676,6 +779,7 @@ struct TreeRootRow: View {
     @Binding var text: String
     let isExpanded: Bool
     let hasChildren: Bool
+    let hasDetail: Bool
     let scale: CGFloat
     let nodeIndex: Int
     let onToggleExpand: () -> Void
@@ -699,7 +803,7 @@ struct TreeRootRow: View {
             ZStack {
                 Image(systemName: "folder.fill")
                     .font(.system(size: 18 * scale))
-                    .foregroundColor(.purple)
+                    .foregroundColor(hasDetail ? .orange : .purple)
                 
                 Text("\(nodeIndex)")
                     .font(.system(size: 8 * scale, weight: .bold))
@@ -776,9 +880,7 @@ struct TreeChildNodesView: View {
                         scale: scale,
                         level: level,
                         nodeIndex: getNodeIndex(node.id),
-                        onSelect: {
-                            selectedNodeId = node.id
-                        },
+                        onSelect: { selectedNodeId = node.id },
                         onToggleExpand: {
                             withAnimation(.spring(response: 0.3)) {
                                 if expandedNodes.contains(node.id) {
@@ -887,10 +989,11 @@ struct TreeNodeRow: View {
         }
     }
     
+    // アイコンの色（詳細ありならオレンジ、なければ紫）
     var iconColor: Color {
         if isSelected {
             return .blue
-        } else if node.hasNote {
+        } else if node.hasDetail {
             return .orange
         } else if hasChildren {
             return .orange
@@ -930,19 +1033,12 @@ struct TreeNodeRow: View {
             ZStack {
                 Image(systemName: hasChildren ? "folder.fill" : "doc.fill")
                     .font(.system(size: 18 * scale))
-                    .foregroundColor(iconColor)
+                    .foregroundColor(node.hasDetail ? .orange : (hasChildren ? .orange : .purple))
                 
                 Text("\(nodeIndex)")
                     .font(.system(size: 8 * scale, weight: .bold))
                     .foregroundColor(.white)
                     .offset(y: 1)
-                
-                if node.hasNote {
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 8 * scale, height: 8 * scale)
-                        .offset(x: 10 * scale, y: -8 * scale)
-                }
             }
             
             TextField("ノード名を入力", text: $node.text, onEditingChanged: { isEditing in
@@ -950,8 +1046,8 @@ struct TreeNodeRow: View {
                     onSaveHistory()
                 }
             })
-                .font(.system(size: 14 * scale))
-                .foregroundColor(.primary)
+            .font(.system(size: 14 * scale))
+            .foregroundColor(.primary)
             
             Spacer()
             
@@ -985,9 +1081,7 @@ struct TreeNodeRow: View {
         )
         .padding(.horizontal, 12)
         .contentShape(Rectangle())
-        .onTapGesture {
-            onSelect()
-        }
+        .onTapGesture { onSelect() }
         .onLongPressGesture(minimumDuration: 0.5) {
             HapticManager.shared.lightImpact()
             onLongPress()
@@ -1051,7 +1145,7 @@ struct VisualModeView: View {
     var onSaveHistory: () -> Void
     
     @GestureState private var gestureScale: CGFloat = 1.0
-    @GestureState private var gestureOffset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
     
     var body: some View {
         GeometryReader { geometry in
@@ -1063,40 +1157,39 @@ struct VisualModeView: View {
                         selectedConnectionId = nil
                     }
                 
-                ForEach($connections) { $connection in
-                    StyledConnectionLine(
-                        connection: $connection,
-                        nodes: nodes,
-                        centerNodeText: centerNodeText,
-                        isSelected: selectedConnectionId == connection.id,
-                        onSelect: {
-                            selectedConnectionId = connection.id
-                            selectedNodeId = nil
-                        }
-                    )
+                ZStack {
+                    ForEach($connections) { $connection in
+                        StyledConnectionLine(
+                            connection: $connection,
+                            nodes: nodes,
+                            centerNodeText: centerNodeText,
+                            isSelected: selectedConnectionId == connection.id,
+                            onSelect: {
+                                selectedConnectionId = connection.id
+                                selectedNodeId = nil
+                            }
+                        )
+                    }
+                    
+                    ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
+                        StyledNodeView(
+                            node: $nodes[index],
+                            centerNodeText: centerNodeText,
+                            isSelected: selectedNodeId == node.id,
+                            canDrag: selectedNodeId == node.id,
+                            onSelect: {
+                                selectedNodeId = node.id
+                                selectedConnectionId = nil
+                            },
+                            nodeIndex: index + 1,
+                            onDragStart: onSaveHistory
+                        )
+                    }
                 }
-                
-                ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
-                    StyledNodeView(
-                        node: $nodes[index],
-                        centerNodeText: centerNodeText,
-                        isSelected: selectedNodeId == node.id,
-                        canDrag: selectedNodeId == node.id,
-                        onSelect: {
-                            selectedNodeId = node.id
-                            selectedConnectionId = nil
-                        },
-                        nodeIndex: index + 1,
-                        onDragStart: onSaveHistory
-                    )
-                }
+                .scaleEffect(scale * gestureScale)
+                .offset(offset)
             }
-            .scaleEffect(scale * gestureScale)
-            .offset(
-                x: offset.width + gestureOffset.width,
-                y: offset.height + gestureOffset.height
-            )
-            .simultaneousGesture(
+            .gesture(
                 MagnificationGesture()
                     .updating($gestureScale) { value, state, _ in
                         state = value
@@ -1106,18 +1199,18 @@ struct VisualModeView: View {
                     }
             )
             .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .updating($gestureOffset) { value, state, _ in
+                DragGesture()
+                    .onChanged { value in
                         if selectedNodeId == nil && selectedConnectionId == nil {
-                            state = value.translation
+                            offset = CGSize(
+                                width: lastOffset.width + value.translation.width,
+                                height: lastOffset.height + value.translation.height
+                            )
                         }
                     }
                     .onEnded { value in
                         if selectedNodeId == nil && selectedConnectionId == nil {
-                            offset = CGSize(
-                                width: offset.width + value.translation.width,
-                                height: offset.height + value.translation.height
-                            )
+                            lastOffset = offset
                         }
                     }
             )
@@ -1183,14 +1276,15 @@ struct StyledNodeView: View {
             }
             .offset(x: -(nodeSize / 2) + 8, y: -(nodeSize / 2) + 8)
             
-            if node.hasNote {
+            // 詳細ありバッジ
+            if node.hasDetail {
                 ZStack {
                     Circle()
                         .fill(Color.orange)
-                        .frame(width: 20, height: 20)
+                        .frame(width: 22, height: 22)
                     
                     Image(systemName: "doc.text.fill")
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .foregroundColor(.white)
                 }
                 .offset(x: (nodeSize / 2) - 8, y: -(nodeSize / 2) + 8)
@@ -1200,17 +1294,13 @@ struct StyledNodeView: View {
             x: node.positionX + dragOffset.width,
             y: node.positionY + dragOffset.height
         )
-        .onTapGesture {
-            onSelect()
-        }
+        .onTapGesture { onSelect() }
         .highPriorityGesture(
             canDrag ?
             DragGesture(minimumDistance: 1)
                 .updating($dragOffset) { value, state, _ in
                     if state == .zero {
-                        DispatchQueue.main.async {
-                            onDragStart?()
-                        }
+                        DispatchQueue.main.async { onDragStart?() }
                     }
                     state = value.translation
                 }
@@ -1295,9 +1385,7 @@ struct StyledConnectionLine: View {
                 }
                 .strokedPath(StrokeStyle(lineWidth: 20))
             )
-            .onTapGesture {
-                onSelect()
-            }
+            .onTapGesture { onSelect() }
         }
     }
 }

@@ -10,7 +10,7 @@ struct NodeStyleEditor: View {
     var connection: Binding<StyledConnection>?
     
     @State private var editingName: String = ""
-    @State private var editingNote: String = ""
+    @State private var editingDetail: String = ""
     @State private var fillColor: Color = .purple
     @State private var borderColor: Color = .purple
     @State private var textColor: Color = .white
@@ -18,6 +18,8 @@ struct NodeStyleEditor: View {
     @State private var lineColor: Color = .purple
     @State private var lineWidth: CGFloat = 2.0
     @State private var connectionReason: String = ""
+    
+    private let detailMaxLength = 200
     
     let colorOptions: [Color] = [
         .purple, .pink, .blue, .green, .orange, .red, .yellow, .cyan, .mint, .indigo,
@@ -39,34 +41,6 @@ struct NodeStyleEditor: View {
                             .padding()
                             .background(Color(.systemBackground))
                             .cornerRadius(12)
-                    }
-                    
-                    // 備考セクション
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("備考")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            
-                            Text("（任意）")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                        
-                        TextEditor(text: $editingNote)
-                            .font(.body)
-                            .frame(minHeight: 80)
-                            .padding(8)
-                            .background(Color(.systemBackground))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                            )
-                        
-                        Text("他のユーザーがノードを長押しすると表示されます")
-                            .font(.caption)
-                            .foregroundColor(.gray)
                     }
                     
                     // 線の設定セクション
@@ -152,6 +126,42 @@ struct NodeStyleEditor: View {
                         .cornerRadius(12)
                     }
                     
+                    // ノードの詳細セクション
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("ノードの詳細")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextEditor(text: $editingDetail)
+                                .font(.body)
+                                .frame(minHeight: 100)
+                                .padding(8)
+                                .background(Color(.tertiarySystemBackground))
+                                .cornerRadius(8)
+                                .onChange(of: editingDetail) { _, newValue in
+                                    if newValue.count > detailMaxLength {
+                                        editingDetail = String(newValue.prefix(detailMaxLength))
+                                    }
+                                }
+                            
+                            HStack {
+                                Text("閲覧者がノードを長押しすると表示されます")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Spacer()
+                                
+                                Text("\(editingDetail.count)/\(detailMaxLength)")
+                                    .font(.caption)
+                                    .foregroundColor(editingDetail.count >= detailMaxLength ? .red : .secondary)
+                            }
+                        }
+                        .padding()
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                    }
+                    
                     // プレビューセクション
                     VStack(alignment: .leading, spacing: 16) {
                         Text("プレビュー")
@@ -189,7 +199,8 @@ struct NodeStyleEditor: View {
                                 )
                                 .position(x: connection != nil ? 220 : 150, y: 100)
                             
-                            if !editingNote.isEmpty {
+                            // 詳細ありバッジ
+                            if !editingDetail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 ZStack {
                                     Circle()
                                         .fill(Color.orange)
@@ -234,7 +245,7 @@ struct NodeStyleEditor: View {
     
     private func loadCurrentValues() {
         editingName = node.isCenter ? centerNodeText : node.text
-        editingNote = node.note
+        editingDetail = node.detail
         fillColor = node.style.fillColor.color
         borderColor = node.style.borderColor.color
         textColor = node.style.textColor.color
@@ -253,7 +264,8 @@ struct NodeStyleEditor: View {
             node.text = editingName
         }
         
-        node.note = editingNote
+        node.detail = editingDetail
+        
         node.style = NodeStyleData(
             fillColor: fillColor,
             borderColor: borderColor,

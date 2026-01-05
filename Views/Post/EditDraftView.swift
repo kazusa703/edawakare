@@ -24,6 +24,11 @@ struct EditDraftView: View {
     @State private var showPreview = false
     @State private var showUnifyStyle = false
     
+    // 編集シート
+    @State private var showNodeEditor = false
+    @State private var editingNodeIndex: Int? = nil
+    @State private var editingConnectionIndex: Int? = nil
+    
     // 履歴管理
     @State private var history: [MindMapState] = []
     @State private var historyIndex = -1
@@ -32,8 +37,13 @@ struct EditDraftView: View {
     @State private var popupReason = ""
     @State private var showReasonPopup = false
     
+    // 確認ダイアログ
+    @State private var showDeleteConfirm = false
+    @State private var showDeleteFinalConfirm = false
+    @State private var showPostConfirm = false
+    
     private var canPost: Bool {
-        nodes.count >= 2
+        !centerNodeText.trimmingCharacters(in: .whitespaces).isEmpty && nodes.count >= 2
     }
     
     var body: some View {
@@ -57,33 +67,67 @@ struct EditDraftView: View {
                         onSaveHistory: saveHistory
                     )
                 } else {
-                    DraftVisualModeView(
-                        centerNodeText: centerNodeText,
-                        nodes: $nodes,
-                        connections: $connections,
-                        selectedNodeId: $selectedNodeId,
-                        selectedConnectionId: $selectedConnectionId,
-                        scale: $visualScale,
-                        offset: $visualOffset,
-                        onShowReason: { reason in
-                            popupReason = reason
-                            showReasonPopup = true
-                        },
-                        onSaveHistory: saveHistory
-                    )
+                    ZStack {
+                        DraftVisualModeView(
+                            centerNodeText: centerNodeText,
+                            nodes: $nodes,
+                            connections: $connections,
+                            selectedNodeId: $selectedNodeId,
+                            selectedConnectionId: $selectedConnectionId,
+                            scale: $visualScale,
+                            offset: $visualOffset,
+                            onShowReason: { reason in
+                                popupReason = reason
+                                showReasonPopup = true
+                            },
+                            onSaveHistory: saveHistory
+                        )
+                        
+                        // フローティング編集ボタン
+                        if selectedNodeId != nil || selectedConnectionId != nil {
+                            VStack {
+                                Spacer()
+                                HStack {
+                                    Spacer()
+                                    
+                                    // 編集ボタン
+                                    Button(action: openSelectedEditor) {
+                                        Image(systemName: "pencil")
+                                            .font(.title2)
+                                            .foregroundColor(.white)
+                                            .frame(width: 56, height: 56)
+                                            .background(Color.purple)
+                                            .clipShape(Circle())
+                                            .shadow(radius: 4)
+                                    }
+                                    
+                                    // 削除ボタン（ノード選択時のみ、中心ノード以外）
+                                    if let nodeId = selectedNodeId,
+                                       let node = nodes.first(where: { $0.id == nodeId }),
+                                       !node.isCenter {
+                                        Button(action: { deleteSelectedNode() }) {
+                                            Image(systemName: "trash")
+                                                .font(.title2)
+                                                .foregroundColor(.white)
+                                                .frame(width: 56, height: 56)
+                                                .background(Color.red)
+                                                .clipShape(Circle())
+                                                .shadow(radius: 4)
+                                        }
+                                    }
+                                }
+                                .padding(.trailing, 20)
+                                .padding(.bottom, 100)
+                            }
+                        }
+                    }
                 }
             }
-            .navigationTitle(centerNodeText)
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     HStack(spacing: 12) {
-                        Button(action: { dismiss() }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 16, weight: .medium))
-                        }
-                        .disabled(isPosting)
-                        
                         Button(action: { showPreview = true }) {
                             Image(systemName: "eye")
                                 .font(.system(size: 16))
@@ -116,26 +160,26 @@ struct EditDraftView: View {
                         }
                         .disabled(historyIndex <= 0)
                         
-                        Button(action: updateDraft) {
-                            Text("下書き")
-                                .font(.subheadline)
-                        }
-                        
+                        // メニューボタン
                         Menu {
-                            Button(role: .destructive, action: deleteDraft) {
-                                Label("下書きを削除", systemImage: "trash")
+                            Button(action: updateDraft) {
+                                Label("下書きを更新", systemImage: "square.and.arrow.down")
+                            }
+                            
+                            Button(action: { showPostConfirm = true }) {
+                                Label("投稿", systemImage: "paperplane")
+                            }
+                            .disabled(!canPost)
+                            
+                            Divider()
+                            
+                            Button(role: .destructive, action: { showDeleteConfirm = true }) {
+                                Label("この下書きを削除", systemImage: "trash")
                             }
                         } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.system(size: 16))
+                            Image(systemName: "ellipsis.circle")
+                                .font(.system(size: 18))
                         }
-                        
-                        Button(action: postToSupabase) {
-                            Text("投稿")
-                                .fontWeight(.semibold)
-                                .foregroundColor(.purple)
-                        }
-                        .disabled(isPosting || !canPost)
                     }
                 }
             }
@@ -153,10 +197,43 @@ struct EditDraftView: View {
                     centerNodeText: centerNodeText
                 )
             }
+            .sheet(isPresented: $showNodeEditor) {
+                if let nodeIndex = editingNodeIndex {
+                    NodeStyleEditor(
+                        node: $nodes[nodeIndex],
+                        centerNodeText: $centerNodeText,
+                        connection: editingConnectionIndex != nil ? $connections[editingConnectionIndex!] : nil
+                    )
+                }
+            }
             .alert("エラー", isPresented: $showError) {
                 Button("OK") {}
             } message: {
                 Text(errorMessage)
+            }
+            .alert("下書きを削除", isPresented: $showDeleteConfirm) {
+                Button("キャンセル", role: .cancel) {}
+                Button("削除する", role: .destructive) {
+                    showDeleteFinalConfirm = true
+                }
+            } message: {
+                Text("この操作は戻れません。削除しますか？")
+            }
+            .alert("最終確認", isPresented: $showDeleteFinalConfirm) {
+                Button("キャンセル", role: .cancel) {}
+                Button("削除", role: .destructive) {
+                    deleteDraft()
+                }
+            } message: {
+                Text("本当にこの下書きを削除しますか？")
+            }
+            .alert("投稿確認", isPresented: $showPostConfirm) {
+                Button("キャンセル", role: .cancel) {}
+                Button("投稿") {
+                    postToSupabase()
+                }
+            } message: {
+                Text("投稿を確定してよろしいですか？")
             }
             .overlay {
                 if showReasonPopup {
@@ -186,7 +263,7 @@ struct EditDraftView: View {
                 isCenter: draftNode.isCenter,
                 parentId: nil,
                 style: draftNode.isCenter ? .defaultCenter : .defaultChild,
-                note: ""
+                detail: ""
             )
         }
         
@@ -203,13 +280,13 @@ struct EditDraftView: View {
         if !nodes.contains(where: { $0.isCenter }) {
             let centerNode = StyledNode(
                 id: UUID(),
-                text: centerNodeText,
+                text: centerNodeText.isEmpty ? "テーマ" : centerNodeText,
                 positionX: UIScreen.main.bounds.width / 2,
                 positionY: 300,
                 isCenter: true,
                 parentId: nil,
                 style: .defaultCenter,
-                note: ""
+                detail: ""
             )
             nodes.insert(centerNode, at: 0)
         }
@@ -223,12 +300,59 @@ struct EditDraftView: View {
                 isCenter: true,
                 parentId: nil,
                 style: .defaultCenter,
-                note: ""
+                detail: ""
             )
             nodes.append(centerNode)
         }
         
         saveHistory()
+    }
+    
+    private func openSelectedEditor() {
+        if let nodeId = selectedNodeId,
+           let index = nodes.firstIndex(where: { $0.id == nodeId }) {
+            editingNodeIndex = index
+            
+            if let connIndex = connections.firstIndex(where: { $0.toNodeId == nodeId }) {
+                editingConnectionIndex = connIndex
+            } else {
+                editingConnectionIndex = nil
+            }
+            
+            showNodeEditor = true
+        } else if let connectionId = selectedConnectionId,
+                  let connIndex = connections.firstIndex(where: { $0.id == connectionId }) {
+            let toNodeId = connections[connIndex].toNodeId
+            if let nodeIndex = nodes.firstIndex(where: { $0.id == toNodeId }) {
+                editingNodeIndex = nodeIndex
+                editingConnectionIndex = connIndex
+                showNodeEditor = true
+            }
+        }
+    }
+    
+    private func deleteSelectedNode() {
+        guard let nodeId = selectedNodeId else { return }
+        saveHistory()
+        
+        var nodesToDelete: Set<UUID> = [nodeId]
+        var changed = true
+        
+        while changed {
+            changed = false
+            for conn in connections {
+                if nodesToDelete.contains(conn.fromNodeId) && !nodesToDelete.contains(conn.toNodeId) {
+                    nodesToDelete.insert(conn.toNodeId)
+                    changed = true
+                }
+            }
+        }
+        
+        nodes.removeAll { nodesToDelete.contains($0.id) }
+        connections.removeAll { nodesToDelete.contains($0.fromNodeId) || nodesToDelete.contains($0.toNodeId) }
+        selectedNodeId = nil
+        
+        HapticManager.shared.lightImpact()
     }
     
     private func addNodeToCenter() {
@@ -255,7 +379,7 @@ struct EditDraftView: View {
             isCenter: false,
             parentId: centerNode.id,
             style: .defaultChild,
-            note: ""
+            detail: ""
         )
         
         let newConnection = StyledConnection(
@@ -269,6 +393,8 @@ struct EditDraftView: View {
         nodes.append(newNode)
         connections.append(newConnection)
         selectedNodeId = newNode.id
+        
+        HapticManager.shared.lightImpact()
     }
     
     private func resetZoom() {
@@ -301,6 +427,8 @@ struct EditDraftView: View {
         nodes = state.nodes
         connections = state.connections
         centerNodeText = state.centerNodeText
+        
+        HapticManager.shared.lightImpact()
     }
     
     private func updateDraft() {
@@ -352,20 +480,29 @@ struct EditDraftView: View {
                 }
                 
                 let nodeInputs = nodes.map { node in
-                    NodeInput(
+                    let styleJSON = NodeStyleJSON(from: node.style)
+                    let styleString = (try? JSONEncoder().encode(styleJSON)).flatMap { String(data: $0, encoding: .utf8) }
+                    
+                    return NodeInput(
                         localId: node.id.uuidString,
                         text: node.isCenter ? centerNodeText : node.text,
                         positionX: node.positionX,
                         positionY: node.positionY,
-                        isCenter: node.isCenter
+                        isCenter: node.isCenter,
+                        note: node.detail.isEmpty ? nil : node.detail,
+                        style: styleString
                     )
                 }
                 
                 let connectionInputs = connections.map { conn in
-                    ConnectionInput(
+                    let styleJSON = ConnectionStyleJSON(from: conn.style)
+                    let styleString = (try? JSONEncoder().encode(styleJSON)).flatMap { String(data: $0, encoding: .utf8) }
+                    
+                    return ConnectionInput(
                         fromLocalId: conn.fromNodeId.uuidString,
                         toLocalId: conn.toNodeId.uuidString,
-                        reason: conn.reason.isEmpty ? nil : conn.reason
+                        reason: conn.reason.isEmpty ? nil : conn.reason,
+                        style: styleString
                     )
                 }
                 
@@ -395,7 +532,7 @@ struct EditDraftView: View {
     }
 }
 
-// MARK: - 下書き用理由ポップアップ（名前変更で重複回避）
+// MARK: - 下書き用理由ポップアップ
 struct DraftReasonPopup: View {
     let reason: String
     let onDismiss: () -> Void
@@ -404,9 +541,7 @@ struct DraftReasonPopup: View {
         ZStack {
             Color.black.opacity(0.4)
                 .ignoresSafeArea()
-                .onTapGesture {
-                    onDismiss()
-                }
+                .onTapGesture { onDismiss() }
             
             VStack(spacing: 16) {
                 HStack {
@@ -484,6 +619,7 @@ struct DraftTextModeView: View {
                     text: $centerNodeText,
                     isExpanded: true,
                     hasChildren: hasChildren(nodeId: nodes.first(where: { $0.isCenter })?.id),
+                    hasDetail: nodes.first(where: { $0.isCenter })?.hasDetail ?? false,
                     scale: scale,
                     nodeIndex: 1,
                     onToggleExpand: {},
@@ -584,7 +720,7 @@ struct DraftTextModeView: View {
                 isCenter: true,
                 parentId: nil,
                 style: .defaultCenter,
-                note: ""
+                detail: ""
             )
             nodes.insert(newCenterNode, at: 0)
             centerNode = newCenterNode
@@ -611,7 +747,7 @@ struct DraftTextModeView: View {
             isCenter: false,
             parentId: center.id,
             style: .defaultChild,
-            note: ""
+            detail: ""
         )
         
         let newConnection = StyledConnection(
@@ -658,7 +794,7 @@ struct DraftTextModeView: View {
             isCenter: false,
             parentId: parentId,
             style: .defaultChild,
-            note: ""
+            detail: ""
         )
         
         let newConnection = StyledConnection(
@@ -700,6 +836,7 @@ struct DraftTreeRootRow: View {
     @Binding var text: String
     let isExpanded: Bool
     let hasChildren: Bool
+    let hasDetail: Bool
     let scale: CGFloat
     let nodeIndex: Int
     let onToggleExpand: () -> Void
@@ -723,7 +860,7 @@ struct DraftTreeRootRow: View {
             ZStack {
                 Image(systemName: "folder.fill")
                     .font(.system(size: 18 * scale))
-                    .foregroundColor(.purple)
+                    .foregroundColor(hasDetail ? .orange : .purple)
                 
                 Text("\(nodeIndex)")
                     .font(.system(size: 8 * scale, weight: .bold))
@@ -800,9 +937,7 @@ struct DraftTreeChildNodesView: View {
                         scale: scale,
                         level: level,
                         nodeIndex: getNodeIndex(node.id),
-                        onSelect: {
-                            selectedNodeId = node.id
-                        },
+                        onSelect: { selectedNodeId = node.id },
                         onToggleExpand: {
                             withAnimation(.spring(response: 0.3)) {
                                 if expandedNodes.contains(node.id) {
@@ -911,18 +1046,6 @@ struct DraftTreeNodeRow: View {
         }
     }
     
-    var iconColor: Color {
-        if isSelected {
-            return .blue
-        } else if node.hasNote {
-            return .orange
-        } else if hasChildren {
-            return .orange
-        } else {
-            return .purple
-        }
-    }
-    
     var body: some View {
         HStack(spacing: 4 * scale) {
             ForEach(0..<level, id: \.self) { i in
@@ -954,19 +1077,12 @@ struct DraftTreeNodeRow: View {
             ZStack {
                 Image(systemName: hasChildren ? "folder.fill" : "doc.fill")
                     .font(.system(size: 18 * scale))
-                    .foregroundColor(iconColor)
+                    .foregroundColor(node.hasDetail ? .orange : (hasChildren ? .orange : .purple))
                 
                 Text("\(nodeIndex)")
                     .font(.system(size: 8 * scale, weight: .bold))
                     .foregroundColor(.white)
                     .offset(y: 1)
-                
-                if node.hasNote {
-                    Circle()
-                        .fill(Color.orange)
-                        .frame(width: 8 * scale, height: 8 * scale)
-                        .offset(x: 10 * scale, y: -8 * scale)
-                }
             }
             
             TextField("ノード名を入力", text: $node.text, onEditingChanged: { isEditing in
@@ -974,8 +1090,8 @@ struct DraftTreeNodeRow: View {
                     onSaveHistory()
                 }
             })
-                .font(.system(size: 14 * scale))
-                .foregroundColor(.primary)
+            .font(.system(size: 14 * scale))
+            .foregroundColor(.primary)
             
             Spacer()
             
@@ -1009,9 +1125,7 @@ struct DraftTreeNodeRow: View {
         )
         .padding(.horizontal, 12)
         .contentShape(Rectangle())
-        .onTapGesture {
-            onSelect()
-        }
+        .onTapGesture { onSelect() }
         .onLongPressGesture(minimumDuration: 0.5) {
             HapticManager.shared.lightImpact()
             onLongPress()
@@ -1075,7 +1189,7 @@ struct DraftVisualModeView: View {
     var onSaveHistory: () -> Void
     
     @GestureState private var gestureScale: CGFloat = 1.0
-    @GestureState private var gestureOffset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
     
     var body: some View {
         GeometryReader { geometry in
@@ -1087,40 +1201,39 @@ struct DraftVisualModeView: View {
                         selectedConnectionId = nil
                     }
                 
-                ForEach($connections) { $connection in
-                    DraftStyledConnectionLine(
-                        connection: $connection,
-                        nodes: nodes,
-                        centerNodeText: centerNodeText,
-                        isSelected: selectedConnectionId == connection.id,
-                        onSelect: {
-                            selectedConnectionId = connection.id
-                            selectedNodeId = nil
-                        }
-                    )
+                ZStack {
+                    ForEach($connections) { $connection in
+                        DraftStyledConnectionLine(
+                            connection: $connection,
+                            nodes: nodes,
+                            centerNodeText: centerNodeText,
+                            isSelected: selectedConnectionId == connection.id,
+                            onSelect: {
+                                selectedConnectionId = connection.id
+                                selectedNodeId = nil
+                            }
+                        )
+                    }
+                    
+                    ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
+                        DraftStyledNodeView(
+                            node: $nodes[index],
+                            centerNodeText: centerNodeText,
+                            isSelected: selectedNodeId == node.id,
+                            canDrag: selectedNodeId == node.id,
+                            onSelect: {
+                                selectedNodeId = node.id
+                                selectedConnectionId = nil
+                            },
+                            nodeIndex: index + 1,
+                            onDragStart: onSaveHistory
+                        )
+                    }
                 }
-                
-                ForEach(Array(nodes.enumerated()), id: \.element.id) { index, node in
-                    DraftStyledNodeView(
-                        node: $nodes[index],
-                        centerNodeText: centerNodeText,
-                        isSelected: selectedNodeId == node.id,
-                        canDrag: selectedNodeId == node.id,
-                        onSelect: {
-                            selectedNodeId = node.id
-                            selectedConnectionId = nil
-                        },
-                        nodeIndex: index + 1,
-                        onDragStart: onSaveHistory
-                    )
-                }
+                .scaleEffect(scale * gestureScale)
+                .offset(offset)
             }
-            .scaleEffect(scale * gestureScale)
-            .offset(
-                x: offset.width + gestureOffset.width,
-                y: offset.height + gestureOffset.height
-            )
-            .simultaneousGesture(
+            .gesture(
                 MagnificationGesture()
                     .updating($gestureScale) { value, state, _ in
                         state = value
@@ -1130,18 +1243,18 @@ struct DraftVisualModeView: View {
                     }
             )
             .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .updating($gestureOffset) { value, state, _ in
+                DragGesture()
+                    .onChanged { value in
                         if selectedNodeId == nil && selectedConnectionId == nil {
-                            state = value.translation
+                            offset = CGSize(
+                                width: lastOffset.width + value.translation.width,
+                                height: lastOffset.height + value.translation.height
+                            )
                         }
                     }
                     .onEnded { value in
                         if selectedNodeId == nil && selectedConnectionId == nil {
-                            offset = CGSize(
-                                width: offset.width + value.translation.width,
-                                height: offset.height + value.translation.height
-                            )
+                            lastOffset = offset
                         }
                     }
             )
@@ -1207,14 +1320,15 @@ struct DraftStyledNodeView: View {
             }
             .offset(x: -(nodeSize / 2) + 8, y: -(nodeSize / 2) + 8)
             
-            if node.hasNote {
+            // 詳細ありバッジ
+            if node.hasDetail {
                 ZStack {
                     Circle()
                         .fill(Color.orange)
-                        .frame(width: 20, height: 20)
+                        .frame(width: 22, height: 22)
                     
                     Image(systemName: "doc.text.fill")
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .foregroundColor(.white)
                 }
                 .offset(x: (nodeSize / 2) - 8, y: -(nodeSize / 2) + 8)
@@ -1224,17 +1338,13 @@ struct DraftStyledNodeView: View {
             x: node.positionX + dragOffset.width,
             y: node.positionY + dragOffset.height
         )
-        .onTapGesture {
-            onSelect()
-        }
+        .onTapGesture { onSelect() }
         .highPriorityGesture(
             canDrag ?
             DragGesture(minimumDistance: 1)
                 .updating($dragOffset) { value, state, _ in
                     if state == .zero {
-                        DispatchQueue.main.async {
-                            onDragStart?()
-                        }
+                        DispatchQueue.main.async { onDragStart?() }
                     }
                     state = value.translation
                 }
@@ -1319,9 +1429,7 @@ struct DraftStyledConnectionLine: View {
                 }
                 .strokedPath(StrokeStyle(lineWidth: 20))
             )
-            .onTapGesture {
-                onSelect()
-            }
+            .onTapGesture { onSelect() }
         }
     }
 }

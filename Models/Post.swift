@@ -15,6 +15,7 @@ struct Post: Identifiable, Codable {
     var allowSave: Bool
     let createdAt: Date
     let updatedAt: Date
+    var style: String?
     
     // リレーション（JOINで取得）
     var user: User?
@@ -43,6 +44,7 @@ struct Post: Identifiable, Codable {
         case user
         case nodes
         case connections
+        case style
     }
     
     init(from decoder: Decoder) throws {
