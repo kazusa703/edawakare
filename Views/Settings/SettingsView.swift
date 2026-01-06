@@ -94,9 +94,12 @@ struct SettingsView: View {
             NavigationLink(destination: AccountInfoView().environmentObject(authService)) {
                 Label("アカウント情報", systemImage: "person.text.rectangle")
             }
-            
+
             NavigationLink(destination: PrivacySettingsView().environmentObject(authService)) {
                 Label("プライバシー設定", systemImage: "lock")
+            }
+            NavigationLink(destination: IconBorderColorSettingsView().environmentObject(authService)) {
+                Label("アイコン縁色", systemImage: "circle.circle")
             }
             NavigationLink(destination: FavoriteStyleEditorView()) {
                 Label("プリセット編集", systemImage: "paintpalette")
@@ -1281,5 +1284,213 @@ struct PrivacyPolicyView: View {
                 .padding()
         }
         .navigationTitle("プライバシーポリシー")
+    }
+}
+
+// MARK: - アイコン縁色設定
+struct IconBorderColorSettingsView: View {
+    @EnvironmentObject var authService: AuthService
+    @State private var selectedColor: Color = .purple
+    @State private var isSaving = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+    @State private var showSuccessAlert = false
+
+    private var canChangeColor: Bool {
+        guard let changedAt = authService.currentUser?.iconBorderChangedAt else {
+            return true // 一度も変更していない場合はOK
+        }
+        let oneYearAgo = Calendar.current.date(byAdding: .year, value: -1, to: Date()) ?? Date()
+        return changedAt <= oneYearAgo
+    }
+
+    private var nextChangeDate: Date? {
+        guard let changedAt = authService.currentUser?.iconBorderChangedAt else { return nil }
+        return Calendar.current.date(byAdding: .year, value: 1, to: changedAt)
+    }
+
+    var body: some View {
+        List {
+            Section {
+                VStack(spacing: 16) {
+                    // プレビュー
+                    ZStack {
+                        Circle()
+                            .stroke(selectedColor, lineWidth: 3)
+                            .frame(width: 86, height: 86)
+
+                        ProfileAvatarView(user: authService.currentUser, size: 80)
+                    }
+
+                    Text("相互フォローの相手に表示されます")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+            }
+
+            Section("色を選択") {
+                if canChangeColor {
+                    ColorPicker("縁色", selection: $selectedColor, supportsOpacity: false)
+                        .padding(.vertical, 8)
+
+                    // プリセットカラー
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 12) {
+                        ForEach(presetColors, id: \.self) { color in
+                            Circle()
+                                .fill(color)
+                                .frame(width: 44, height: 44)
+                                .overlay(
+                                    Circle()
+                                        .stroke(selectedColor == color ? Color.primary : Color.clear, lineWidth: 2)
+                                )
+                                .onTapGesture {
+                                    selectedColor = color
+                                    HapticManager.shared.lightImpact()
+                                }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                } else {
+                    HStack {
+                        Image(systemName: "clock")
+                            .foregroundColor(.orange)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("変更できません")
+                                .font(.headline)
+                            if let nextDate = nextChangeDate {
+                                Text("次回変更可能日: \(formatDate(nextDate))")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+
+            if canChangeColor {
+                Section {
+                    Button(action: saveColor) {
+                        HStack {
+                            Spacer()
+                            if isSaving {
+                                ProgressView()
+                            } else {
+                                Text("保存")
+                                    .fontWeight(.semibold)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(isSaving)
+                } footer: {
+                    Text("縁色は1年に1回のみ変更できます")
+                        .font(.caption)
+                }
+            }
+
+            Section {
+                Button(role: .destructive, action: removeColor) {
+                    HStack {
+                        Spacer()
+                        Text("縁色を削除")
+                        Spacer()
+                    }
+                }
+                .disabled(isSaving || authService.currentUser?.iconBorderColor == nil)
+            }
+        }
+        .navigationTitle("アイコン縁色")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if let colorHex = authService.currentUser?.iconBorderColor {
+                selectedColor = Color(hex: colorHex) ?? .purple
+            }
+        }
+        .alert("エラー", isPresented: $showError) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+        .alert("保存完了", isPresented: $showSuccessAlert) {
+            Button("OK") { }
+        } message: {
+            Text("アイコン縁色を更新しました")
+        }
+    }
+
+    private var presetColors: [Color] {
+        [.purple, .pink, .red, .orange, .yellow, .green, .mint, .teal, .cyan, .blue, .indigo]
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.locale = Locale(identifier: "ja_JP")
+        return formatter.string(from: date)
+    }
+
+    private func saveColor() {
+        guard let userId = authService.currentUser?.id else { return }
+
+        isSaving = true
+
+        Task {
+            do {
+                let hexColor = selectedColor.toHex()
+                try await UserService.shared.updateIconBorderColor(userId: userId, color: hexColor)
+                await MainActor.run {
+                    authService.currentUser?.iconBorderColor = hexColor
+                    authService.currentUser?.iconBorderChangedAt = Date()
+                    isSaving = false
+                    showSuccessAlert = true
+                    HapticManager.shared.success()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showError = true
+                    isSaving = false
+                }
+            }
+        }
+    }
+
+    private func removeColor() {
+        guard let userId = authService.currentUser?.id else { return }
+
+        isSaving = true
+
+        Task {
+            do {
+                try await UserService.shared.updateIconBorderColor(userId: userId, color: nil)
+                await MainActor.run {
+                    authService.currentUser?.iconBorderColor = nil
+                    isSaving = false
+                    HapticManager.shared.success()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showError = true
+                    isSaving = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Color Extension for toHex
+extension Color {
+    func toHex() -> String {
+        guard let components = UIColor(self).cgColor.components, components.count >= 3 else {
+            return "#FFFFFF"
+        }
+        let r = Int(components[0] * 255)
+        let g = Int(components[1] * 255)
+        let b = Int(components[2] * 255)
+        return String(format: "#%02X%02X%02X", r, g, b)
     }
 }

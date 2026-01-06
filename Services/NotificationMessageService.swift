@@ -306,7 +306,48 @@ class MessageService {
             throw error
         }
     }
-    
+
+    // MARK: - 未読メッセージ数を取得
+    func fetchUnreadCount(userId: UUID) async throws -> Int {
+        print("🟡 [DM未読数取得] 開始 - userId: \(userId)")
+
+        struct CountOnly: Decodable {
+            let id: UUID
+        }
+
+        do {
+            // まず自分が参加している会話を取得
+            let conversations: [Conversation] = try await SupabaseClient.shared.client
+                .from("conversations")
+                .select("id, user1_id, user2_id")
+                .or("user1_id.eq.\(userId.uuidString),user2_id.eq.\(userId.uuidString)")
+                .execute()
+                .value
+
+            var totalUnread = 0
+
+            for conversation in conversations {
+                // 自分宛ての未読メッセージをカウント
+                let unreadMessages: [CountOnly] = try await SupabaseClient.shared.client
+                    .from("messages")
+                    .select("id")
+                    .eq("conversation_id", value: conversation.id.uuidString)
+                    .neq("sender_id", value: userId.uuidString)
+                    .eq("is_read", value: false)
+                    .execute()
+                    .value
+
+                totalUnread += unreadMessages.count
+            }
+
+            print("✅ [DM未読数取得] 成功 - 件数: \(totalUnread)")
+            return totalUnread
+        } catch {
+            print("🔴 [DM未読数取得] エラー: \(error)")
+            throw error
+        }
+    }
+
     func createConversation(user1Id: UUID, user2Id: UUID) async throws -> Conversation {
         do {
             // 既存の会話があればそれを返す
@@ -345,6 +386,58 @@ class MessageService {
             print("🔴 [会話作成] エラー: \(error)")
             throw error
         }
+    }
+
+    // MARK: - 投稿からDMを開始
+    func startConversationFromPost(currentUserId: UUID, authorId: UUID, postId: UUID, postTitle: String, initialMessage: String) async throws -> UUID {
+        print("🟡 [投稿からDM] 開始 - postId: \(postId)")
+
+        // DM制限チェック
+        let canDM = try await checkDMPermission(senderId: currentUserId, receiverId: authorId)
+        guard canDM else {
+            throw DMError.notAllowed
+        }
+
+        // 既存の会話があればそれを使用、なければ新規作成
+        let conversation = try await createConversation(user1Id: currentUserId, user2Id: authorId)
+
+        // メッセージ作成（from_post_idをセット）
+        struct MessageInsertWithPost: Encodable {
+            let conversation_id: String
+            let sender_id: String
+            let content: String
+            let from_post_id: String
+            let from_post_title: String
+        }
+
+        let insertData = MessageInsertWithPost(
+            conversation_id: conversation.id.uuidString,
+            sender_id: currentUserId.uuidString,
+            content: initialMessage,
+            from_post_id: postId.uuidString,
+            from_post_title: postTitle
+        )
+
+        let _: DMMessage = try await SupabaseClient.shared.client
+            .from("messages")
+            .insert(insertData)
+            .select("*, sender:users!sender_id(*)")
+            .single()
+            .execute()
+            .value
+
+        // 会話の最終メッセージ時刻を更新
+        try await SupabaseClient.shared.client
+            .from("conversations")
+            .update(["last_message_at": ISO8601DateFormatter().string(from: Date())])
+            .eq("id", value: conversation.id.uuidString)
+            .execute()
+
+        // DM通知を作成
+        try await createDMNotification(receiverId: authorId, senderId: currentUserId)
+
+        print("✅ [投稿からDM] 成功 - conversationId: \(conversation.id)")
+        return conversation.id
     }
 
     // MARK: - DM制限チェック

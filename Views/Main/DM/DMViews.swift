@@ -20,7 +20,7 @@ struct DMListView: View {
                     List {
                         ForEach(conversations) { conversation in
                             NavigationLink(destination: ChatView(conversation: conversation)) {
-                                ConversationRow(conversation: conversation)
+                                ConversationRow(conversation: conversation, currentUserId: authService.currentUser?.id)
                             }
                         }
                         .onDelete(perform: deleteConversation)
@@ -66,10 +66,15 @@ struct DMListView: View {
 // MARK: - 会話行
 struct ConversationRow: View {
     let conversation: Conversation
-    
+    let currentUserId: UUID?
+
     var body: some View {
         HStack(spacing: 12) {
-            InitialAvatarView(conversation.otherUser?.displayName ?? "?", size: 50)
+            if let otherUser = conversation.otherUser {
+                UserAvatarView(user: otherUser, size: 50, showMutualBorder: true, currentUserId: currentUserId)
+            } else {
+                InitialAvatarView("?", size: 50)
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -203,12 +208,28 @@ struct MessageInputBar: View {
 struct MessageBubble: View {
     let message: DMMessage
     let isFromMe: Bool
-    
+
     var body: some View {
         HStack {
             if isFromMe { Spacer() }
-            
+
             VStack(alignment: isFromMe ? .trailing : .leading, spacing: 4) {
+                // 投稿からのDMの場合、特別表示
+                if let postTitle = message.fromPostTitle, !postTitle.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "quote.opening")
+                            .font(.caption2)
+                        Text("『\(postTitle)』という投稿からDM")
+                            .font(.caption)
+                            .italic()
+                    }
+                    .foregroundColor(.purple)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.purple.opacity(0.1))
+                    .cornerRadius(12)
+                }
+
                 Text(message.content)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -219,12 +240,12 @@ struct MessageBubble: View {
                     )
                     .foregroundColor(isFromMe ? .white : .primary)
                     .cornerRadius(20)
-                
+
                 Text(TimeFormatter.timeOnly(from: message.createdAt))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
-            
+
             if !isFromMe { Spacer() }
         }
     }
@@ -269,7 +290,7 @@ struct NewMessageView: View {
                 } else {
                     List(searchResults) { user in
                         Button(action: { startConversation(with: user) }) {
-                            UserRowSimple(user: user)
+                            UserRowSimple(user: user, currentUserId: authService.currentUser?.id)
                         }
                     }
                     .listStyle(.plain)
@@ -330,10 +351,11 @@ struct SearchBar: View {
 // MARK: - シンプルユーザー行
 struct UserRowSimple: View {
     let user: User
-    
+    let currentUserId: UUID?
+
     var body: some View {
         HStack(spacing: 12) {
-            InitialAvatarView(user.displayName, size: 40)
+            UserAvatarView(user: user, size: 40, showMutualBorder: true, currentUserId: currentUserId)
             VStack(alignment: .leading) {
                 Text(user.displayName)
                     .font(.headline)

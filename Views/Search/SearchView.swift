@@ -350,29 +350,25 @@ struct RecommendedUserRow: View {
     var body: some View {
         HStack(spacing: 12) {
             NavigationLink(destination: UserProfileView(userId: user.id)) {
-                Circle()
-                    .fill(
-                        LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .frame(width: 50, height: 50)
-                    .overlay(
-                        Text(String(user.displayName.prefix(1)))
-                            .font(.headline)
-                            .foregroundColor(.white)
-                    )
+                UserAvatarView(
+                    user: user,
+                    size: 50,
+                    showMutualBorder: true,
+                    currentUserId: authService.currentUser?.id
+                )
             }
-            
+
             NavigationLink(destination: UserProfileView(userId: user.id)) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(user.displayName)
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
-                    
+
                     Text("@\(user.username)")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     if let bio = user.bio, !bio.isEmpty {
                         Text(bio)
                             .font(.caption)
@@ -381,9 +377,9 @@ struct RecommendedUserRow: View {
                     }
                 }
             }
-            
+
             Spacer()
-            
+
             // アニメーション付きフォローボタン
             Button(action: toggleFollow) {
                 if isLoading {
@@ -517,22 +513,30 @@ struct PostSearchResultsView: View {
 // MARK: - 検索投稿カード
 struct SearchPostCardView: View {
     let post: Post
-    
+    @EnvironmentObject var authService: AuthService
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                Circle()
-                    .fill(
-                        LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                if let user = post.user {
+                    UserAvatarView(
+                        user: user,
+                        size: 36,
+                        showMutualBorder: true,
+                        currentUserId: authService.currentUser?.id
                     )
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        Text(String(post.user?.displayName.prefix(1) ?? "?"))
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                    )
-                
+                } else {
+                    Circle()
+                        .fill(AppColors.primaryGradient)
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Text("?")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                        )
+                }
+
                 VStack(alignment: .leading, spacing: 0) {
                     Text(post.user?.displayName ?? "ユーザー")
                         .font(.subheadline)
@@ -542,9 +546,9 @@ struct SearchPostCardView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 HStack(spacing: 4) {
                     Image(systemName: "point.3.connected.trianglepath.dotted")
                         .font(.caption2)
@@ -670,16 +674,12 @@ struct SearchUserRowView: View {
     var body: some View {
         NavigationLink(destination: UserProfileView(userId: user.id)) {
             HStack(spacing: 12) {
-                Circle()
-                    .fill(
-                        LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .frame(width: 50, height: 50)
-                    .overlay(
-                        Text(String(user.displayName.prefix(1)))
-                            .font(.headline)
-                            .foregroundColor(.white)
-                    )
+                UserAvatarView(
+                    user: user,
+                    size: 50,
+                    showMutualBorder: true,
+                    currentUserId: authService.currentUser?.id
+                )
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(user.displayName)

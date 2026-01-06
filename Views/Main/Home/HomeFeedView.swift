@@ -146,6 +146,13 @@ struct HomePostCardView: View {
     @State private var likeScale: CGFloat = 1.0
     @State private var bookmarkRotation: Double = 0
     @State private var bookmarkScale: CGFloat = 1.0
+    @State private var showDMSheet = false
+    @State private var showDMErrorAlert = false
+    @State private var dmErrorMessage = ""
+
+    private var isOwnPost: Bool {
+        authService.currentUser?.id == post.userId
+    }
     
     var body: some View {
         GeometryReader { geometry in
@@ -174,16 +181,23 @@ struct HomePostCardView: View {
                     Spacer()
                     
                     NavigationLink(destination: UserProfileView(userId: post.userId)) {
-                        Circle()
-                            .fill(
-                                LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        if let user = post.user {
+                            UserAvatarView(
+                                user: user,
+                                size: 44,
+                                showMutualBorder: true,
+                                currentUserId: authService.currentUser?.id
                             )
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Text(String(post.user?.displayName.prefix(1) ?? "?"))
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                            )
+                        } else {
+                            Circle()
+                                .fill(AppColors.primaryGradient)
+                                .frame(width: 44, height: 44)
+                                .overlay(
+                                    Text("?")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                )
+                        }
                     }
                     
                     Button(action: { toggleLike() }) {
@@ -231,7 +245,16 @@ struct HomePostCardView: View {
                             .scaleEffect(bookmarkScale)
                             .rotationEffect(.degrees(bookmarkRotation))
                     }
-                    
+
+                    // DMボタン（自分の投稿には非表示）
+                    if !isOwnPost {
+                        Button(action: { startDMFromPost() }) {
+                            Image(systemName: "envelope")
+                                .font(.title)
+                                .foregroundColor(.primary)
+                        }
+                    }
+
                     ShareLink(item: "枝分かれで「\(post.centerNodeText)」を見つけました！") {
                         Image(systemName: "square.and.arrow.up")
                             .font(.title)
@@ -297,9 +320,18 @@ struct HomePostCardView: View {
             CommentsView(post: post)
                 .environmentObject(authService)
         }
+        .sheet(isPresented: $showDMSheet) {
+            DMFromPostSheet(post: post)
+                .environmentObject(authService)
+        }
         .fullScreenCover(isPresented: $showFullMap) {
             HomeFullMapView(post: post)
                 .environmentObject(authService)
+        }
+        .alert("DMを送れません", isPresented: $showDMErrorAlert) {
+            Button("OK") { }
+        } message: {
+            Text(dmErrorMessage)
         }
         .onAppear {
             likeCount = post.likeCount
@@ -370,13 +402,158 @@ struct HomePostCardView: View {
     
     private func checkLikeAndBookmarkStatus() {
         guard let userId = authService.currentUser?.id else { return }
-        
+
         Task {
             do {
                 isLiked = try await InteractionService.shared.isLiked(userId: userId, postId: post.id)
                 isBookmarked = try await InteractionService.shared.isBookmarked(userId: userId, postId: post.id)
             } catch {
                 print("🔴 [PostCard] checkStatus エラー: \(error)")
+            }
+        }
+    }
+
+    private func startDMFromPost() {
+        guard let currentUserId = authService.currentUser?.id else { return }
+
+        HapticManager.shared.lightImpact()
+
+        Task {
+            do {
+                // DM制限チェック
+                let canDM = try await MessageService.shared.checkDMPermission(senderId: currentUserId, receiverId: post.userId)
+                if canDM {
+                    await MainActor.run {
+                        showDMSheet = true
+                    }
+                } else {
+                    await MainActor.run {
+                        dmErrorMessage = "この相手にはDMを送れません"
+                        showDMErrorAlert = true
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    dmErrorMessage = "エラーが発生しました"
+                    showDMErrorAlert = true
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 投稿からDM送信シート
+struct DMFromPostSheet: View {
+    let post: Post
+    @EnvironmentObject var authService: AuthService
+    @Environment(\.dismiss) var dismiss
+    @State private var messageText = ""
+    @State private var isSending = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                // 投稿情報
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "quote.opening")
+                            .foregroundColor(.purple)
+                        Text("この投稿についてDM")
+                            .font(.headline)
+                    }
+
+                    Text(post.centerNodeText)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .padding(.leading, 24)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+
+                // 送信先
+                HStack {
+                    Text("送信先:")
+                        .foregroundColor(.secondary)
+                    Text("@\(post.user?.username ?? "unknown")")
+                        .fontWeight(.medium)
+                    Spacer()
+                }
+                .padding(.horizontal)
+
+                // メッセージ入力
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("メッセージ")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    TextEditor(text: $messageText)
+                        .frame(minHeight: 120)
+                        .padding(8)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(8)
+                }
+                .padding(.horizontal)
+
+                Spacer()
+            }
+            .padding(.top)
+            .navigationTitle("DMを送信")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("キャンセル") { dismiss() }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: sendDM) {
+                        if isSending {
+                            ProgressView()
+                        } else {
+                            Text("送信")
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .disabled(messageText.trimmingCharacters(in: .whitespaces).isEmpty || isSending)
+                }
+            }
+            .alert("エラー", isPresented: $showError) {
+                Button("OK") { }
+            } message: {
+                Text(errorMessage)
+            }
+        }
+    }
+
+    private func sendDM() {
+        guard let currentUserId = authService.currentUser?.id else { return }
+        let trimmedMessage = messageText.trimmingCharacters(in: .whitespaces)
+        guard !trimmedMessage.isEmpty else { return }
+
+        isSending = true
+
+        Task {
+            do {
+                _ = try await MessageService.shared.startConversationFromPost(
+                    currentUserId: currentUserId,
+                    authorId: post.userId,
+                    postId: post.id,
+                    postTitle: post.centerNodeText,
+                    initialMessage: trimmedMessage
+                )
+                HapticManager.shared.success()
+                await MainActor.run {
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showError = true
+                    isSending = false
+                }
             }
         }
     }

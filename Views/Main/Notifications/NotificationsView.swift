@@ -53,7 +53,7 @@ struct NotificationsView: View {
                 NotificationSettingsSheet()
             }
             .sheet(item: $selectedGroupForDetail) { group in
-                GroupedActorsSheet(group: group) { notification in
+                GroupedActorsSheet(group: group, currentUserId: authService.currentUser?.id) { notification in
                     markAsRead(notification)
                 }
             }
@@ -79,6 +79,7 @@ struct NotificationsView: View {
             // まとめ表示
             GroupedPostNotificationRow(
                 group: group,
+                currentUserId: authService.currentUser?.id,
                 onTap: {
                     selectedGroupForDetail = group
                     markGroupAsRead(group)
@@ -270,6 +271,7 @@ struct PostNotificationGroup: Identifiable {
 // MARK: - Grouped Post Notification Row
 struct GroupedPostNotificationRow: View {
     let group: PostNotificationGroup
+    let currentUserId: UUID?
     var onTap: () -> Void
 
     var body: some View {
@@ -280,13 +282,15 @@ struct GroupedPostNotificationRow: View {
                     if group.notifications.count > 1 {
                         // 背面のアバター
                         if let secondActor = group.notifications.dropFirst().first?.actor {
-                            ProfileAvatarView(user: secondActor, size: 36)
+                            UserAvatarView(user: secondActor, size: 36, showMutualBorder: true, currentUserId: currentUserId)
                                 .offset(x: 12, y: 0)
                                 .opacity(0.7)
                         }
                     }
                     // 前面のアバター
-                    ProfileAvatarView(user: group.firstActor, size: 40)
+                    if let firstActor = group.firstActor {
+                        UserAvatarView(user: firstActor, size: 40, showMutualBorder: true, currentUserId: currentUserId)
+                    }
                 }
                 .frame(width: 52, height: 44)
 
@@ -348,6 +352,7 @@ struct GroupedPostNotificationRow: View {
 // MARK: - Grouped Actors Sheet
 struct GroupedActorsSheet: View {
     let group: PostNotificationGroup
+    let currentUserId: UUID?
     var onMarkAsRead: (AppNotification) -> Void
     @Environment(\.dismiss) var dismiss
 
@@ -356,7 +361,9 @@ struct GroupedActorsSheet: View {
             List {
                 ForEach(group.notifications) { notification in
                     HStack(spacing: 12) {
-                        ProfileAvatarView(user: notification.actor, size: 44)
+                        if let actor = notification.actor {
+                            UserAvatarView(user: actor, size: 44, showMutualBorder: true, currentUserId: currentUserId)
+                        }
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(notification.actor?.displayName ?? "ユーザー")

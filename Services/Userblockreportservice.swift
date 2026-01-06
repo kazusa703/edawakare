@@ -151,22 +151,45 @@ class UserService {
     // MARK: - プライバシー設定更新
     func updatePrivacySettings(userId: UUID, isPrivate: Bool, dmPermission: String) async throws {
         print("🟡 [プライバシー設定更新] 開始")
-        
+
         let update = PrivacyUpdate(
             is_private: isPrivate,
             dm_permission: dmPermission
         )
-        
+
         do {
             try await SupabaseClient.shared.client
                 .from("users")
                 .update(update)
                 .eq("id", value: userId.uuidString)
                 .execute()
-            
+
             print("✅ [プライバシー設定更新] 成功")
         } catch {
             print("🔴 [プライバシー設定更新] エラー: \(error)")
+            throw error
+        }
+    }
+
+    // MARK: - アイコン縁色更新
+    func updateIconBorderColor(userId: UUID, color: String?) async throws {
+        print("🟡 [アイコン縁色更新] 開始 - color: \(color ?? "nil")")
+
+        let update = IconBorderColorUpdate(
+            icon_border_color: color,
+            icon_border_changed_at: ISO8601DateFormatter().string(from: Date())
+        )
+
+        do {
+            try await SupabaseClient.shared.client
+                .from("users")
+                .update(update)
+                .eq("id", value: userId.uuidString)
+                .execute()
+
+            print("✅ [アイコン縁色更新] 成功")
+        } catch {
+            print("🔴 [アイコン縁色更新] エラー: \(error)")
             throw error
         }
     }
@@ -329,6 +352,11 @@ struct ProfileUpdate: Encodable {
 struct PrivacyUpdate: Encodable {
     let is_private: Bool
     let dm_permission: String
+}
+
+struct IconBorderColorUpdate: Encodable {
+    let icon_border_color: String?
+    let icon_border_changed_at: String
 }
 
 // MARK: - Insert用の構造体

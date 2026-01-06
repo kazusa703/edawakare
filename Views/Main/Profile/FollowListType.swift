@@ -98,7 +98,7 @@ struct FollowUserRow: View {
         HStack(spacing: 12) {
             NavigationLink(destination: UserProfileView(userId: user.id).environmentObject(authService)) {
                 HStack(spacing: 12) {
-                    ProfileAvatarView(user: user, size: 50)
+                    UserAvatarView(user: user, size: 50, showMutualBorder: true, currentUserId: currentUserId)
                     
                     VStack(alignment: .leading, spacing: 2) {
                         Text(user.displayName)

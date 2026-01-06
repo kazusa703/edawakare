@@ -24,6 +24,7 @@ struct UserProfileView: View {
     @State private var chatConversation: Conversation?
     @State private var showDMErrorAlert = false
     @State private var dmErrorMessage = ""
+    @State private var isMutualFollow = false
 
     var body: some View {
         ScrollView {
@@ -34,34 +35,43 @@ struct UserProfileView: View {
                 } else if let profile = profile {
                     // プロフィールヘッダー
                     VStack(spacing: 16) {
-                        // アイコン
-                        if let iconUrl = profile.iconUrl, let url = URL(string: iconUrl) {
-                            AsyncImage(url: url) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                            } placeholder: {
+                        // アイコン（相互フォロー縁色対応）
+                        ZStack {
+                            // 相互フォロー時の縁色
+                            if isMutualFollow, let colorHex = profile.iconBorderColor {
                                 Circle()
-                                    .fill(Color.gray.opacity(0.3))
+                                    .stroke(Color(hex: colorHex) ?? .purple, lineWidth: 4)
+                                    .frame(width: 108, height: 108)
                             }
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
-                        } else {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.purple, .pink],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
+
+                            if let iconUrl = profile.iconUrl, let url = URL(string: iconUrl) {
+                                AsyncImage(url: url) { image in
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                } placeholder: {
+                                    Circle()
+                                        .fill(Color.gray.opacity(0.3))
+                                }
                                 .frame(width: 100, height: 100)
-                                .overlay(
-                                    Text(String(profile.displayName?.prefix(1) ?? "?"))
-                                        .font(.largeTitle)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                )
+                                .clipShape(Circle())
+                            } else {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.purple, .pink],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 100, height: 100)
+                                    .overlay(
+                                        Text(String(profile.displayName?.prefix(1) ?? "?"))
+                                            .font(.largeTitle)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.white)
+                                    )
+                            }
                         }
                         
                         // 名前とユーザー名
@@ -280,12 +290,16 @@ struct UserProfileView: View {
                     .execute()
                     .value
                 isFollowing = !followCheck.isEmpty
+
+                // 相互フォロー判定
+                let mutual = try await InteractionService.shared.isMutualFollow(userId1: session.user.id, userId2: userId)
+                isMutualFollow = mutual
             }
-            
+
         } catch {
             print("Error loading user data: \(error)")
         }
-        
+
         isLoading = false
     }
     
@@ -425,13 +439,15 @@ struct UserProfileData: Codable {
     let displayName: String?
     let bio: String?
     let iconUrl: String?
-    
+    let iconBorderColor: String?
+
     enum CodingKeys: String, CodingKey {
         case id
         case username
         case displayName = "display_name"
         case bio
         case iconUrl = "icon_url"
+        case iconBorderColor = "icon_border_color"
     }
 }
 

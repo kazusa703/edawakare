@@ -12,9 +12,11 @@ struct User: Identifiable, Codable {
     var totalBranches: Int
     var isPrivate: Bool
     var dmPermission: String
+    var iconBorderColor: String?
+    var iconBorderChangedAt: Date?
     let createdAt: Date
     var updatedAt: Date
-    
+
     // 追加プロパティ（計算またはJOINで取得）
     var followersCount: Int?
     var followingCount: Int?
@@ -29,6 +31,8 @@ struct User: Identifiable, Codable {
         case totalBranches = "total_branches"
         case isPrivate = "is_private"
         case dmPermission = "dm_permission"
+        case iconBorderColor = "icon_border_color"
+        case iconBorderChangedAt = "icon_border_changed_at"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -44,13 +48,20 @@ struct User: Identifiable, Codable {
         totalBranches = try container.decodeIfPresent(Int.self, forKey: .totalBranches) ?? 0
         isPrivate = try container.decodeIfPresent(Bool.self, forKey: .isPrivate) ?? false
         dmPermission = try container.decodeIfPresent(String.self, forKey: .dmPermission) ?? "everyone"
-        
+        iconBorderColor = try container.decodeIfPresent(String.self, forKey: .iconBorderColor)
+
+        if let dateString = try? container.decode(String.self, forKey: .iconBorderChangedAt) {
+            iconBorderChangedAt = ISO8601DateFormatter().date(from: dateString)
+        } else {
+            iconBorderChangedAt = nil
+        }
+
         if let dateString = try? container.decode(String.self, forKey: .createdAt) {
             createdAt = ISO8601DateFormatter().date(from: dateString) ?? Date()
         } else {
             createdAt = Date()
         }
-        
+
         if let dateString = try? container.decode(String.self, forKey: .updatedAt) {
             updatedAt = ISO8601DateFormatter().date(from: dateString) ?? Date()
         } else {
@@ -69,9 +80,10 @@ struct User: Identifiable, Codable {
         try container.encode(totalBranches, forKey: .totalBranches)
         try container.encode(isPrivate, forKey: .isPrivate)
         try container.encode(dmPermission, forKey: .dmPermission)
+        try container.encodeIfPresent(iconBorderColor, forKey: .iconBorderColor)
     }
-    
-    init(id: UUID, email: String, username: String, displayName: String, bio: String? = nil, avatarUrl: String? = nil, totalBranches: Int = 0, isPrivate: Bool = false, dmPermission: String = "everyone", createdAt: Date = Date(), updatedAt: Date = Date()) {
+
+    init(id: UUID, email: String, username: String, displayName: String, bio: String? = nil, avatarUrl: String? = nil, totalBranches: Int = 0, isPrivate: Bool = false, dmPermission: String = "everyone", iconBorderColor: String? = nil, iconBorderChangedAt: Date? = nil, createdAt: Date = Date(), updatedAt: Date = Date()) {
         self.id = id
         self.email = email
         self.username = username
@@ -81,6 +93,8 @@ struct User: Identifiable, Codable {
         self.totalBranches = totalBranches
         self.isPrivate = isPrivate
         self.dmPermission = dmPermission
+        self.iconBorderColor = iconBorderColor
+        self.iconBorderChangedAt = iconBorderChangedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

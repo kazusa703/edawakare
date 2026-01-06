@@ -12,13 +12,14 @@ struct DisplayPreviewView: View {
     var initialOffsetX: Double = 0
     var initialOffsetY: Double = 0
 
-    var onConfirm: (Double, Double, Double) -> Void
+    var onConfirm: (Double, Double, Double, String, Bool, [String]) -> Void
     var onCancel: () -> Void
 
     @State private var scale: CGFloat = 1.0
     @State private var lastScale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
+    @State private var showPostSettings = false
 
     var body: some View {
         NavigationStack {
@@ -60,7 +61,7 @@ struct DisplayPreviewView: View {
                             .scaleEffect(scale)
                             .offset(offset)
                         }
-                        .frame(width: geometry.size.width - 32, height: geometry.size.height * 0.6)
+                        .frame(width: max(1, geometry.size.width - 32), height: max(1, geometry.size.height * 0.6))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .gesture(
                             MagnificationGesture()
@@ -116,10 +117,10 @@ struct DisplayPreviewView: View {
                                 )
                             }
 
-                            Button(action: confirmSettings) {
+                            Button(action: { showPostSettings = true }) {
                                 HStack {
-                                    Image(systemName: "checkmark")
-                                    Text("この表示で投稿")
+                                    Image(systemName: "arrow.right")
+                                    Text("次へ")
                                 }
                                 .font(.headline)
                                 .foregroundColor(.white)
@@ -154,6 +155,17 @@ struct DisplayPreviewView: View {
                 offset = CGSize(width: initialOffsetX, height: initialOffsetY)
                 lastOffset = offset
             }
+            .sheet(isPresented: $showPostSettings) {
+                PostSettingsView(
+                    onPost: { visibility, commentsEnabled, hashtags in
+                        showPostSettings = false
+                        onConfirm(Double(scale), Double(offset.width), Double(offset.height), visibility, commentsEnabled, hashtags)
+                    },
+                    onCancel: {
+                        showPostSettings = false
+                    }
+                )
+            }
         }
     }
 
@@ -164,11 +176,6 @@ struct DisplayPreviewView: View {
             lastOffset = .zero
         }
         HapticManager.shared.lightImpact()
-    }
-
-    private func confirmSettings() {
-        HapticManager.shared.success()
-        onConfirm(Double(scale), Double(offset.width), Double(offset.height))
     }
 }
 
@@ -350,7 +357,7 @@ struct DisplaySettingsView: View {
                             .scaleEffect(scale)
                             .offset(offset)
                         }
-                        .frame(width: geometry.size.width - 32, height: geometry.size.height * 0.6)
+                        .frame(width: max(1, geometry.size.width - 32), height: max(1, geometry.size.height * 0.6))
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .gesture(
                             MagnificationGesture()
