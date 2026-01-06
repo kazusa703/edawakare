@@ -48,6 +48,11 @@ struct EditDraftView: View {
     @State private var pendingDisplayOffsetX: Double = 0
     @State private var pendingDisplayOffsetY: Double = 0
 
+    // 投稿設定
+    @State private var pendingVisibility: String = "public"
+    @State private var pendingCommentsEnabled: Bool = true
+    @State private var pendingHashtags: [String] = []
+
     private var canPost: Bool {
         !centerNodeText.trimmingCharacters(in: .whitespaces).isEmpty && nodes.count >= 2
     }
@@ -261,10 +266,13 @@ struct EditDraftView: View {
                     centerNodeText: centerNodeText,
                     nodes: nodes,
                     connections: connections,
-                    onConfirm: { scale, offsetX, offsetY in
+                    onConfirm: { scale, offsetX, offsetY, visibility, commentsEnabled, hashtags in
                         pendingDisplayScale = scale
                         pendingDisplayOffsetX = offsetX
                         pendingDisplayOffsetY = offsetY
+                        pendingVisibility = visibility
+                        pendingCommentsEnabled = commentsEnabled
+                        pendingHashtags = hashtags
                         showDisplayPreview = false
                         postToSupabase()
                     },
@@ -620,6 +628,8 @@ struct EditDraftView: View {
                     centerNodeText: centerNodeText,
                     nodes: nodeInputs,
                     connections: connectionInputs,
+                    visibility: pendingVisibility,
+                    commentsEnabled: pendingCommentsEnabled,
                     displayScale: pendingDisplayScale,
                     displayOffsetX: pendingDisplayOffsetX,
                     displayOffsetY: pendingDisplayOffsetY

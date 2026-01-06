@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AC1664732F0D000100E076C4 /* PostSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1664722F0D000100E076C4 /* PostSettingsView.swift */; };
 		AC1664712F0CB00000E076C4 /* CommentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1664702F0CB00000E076C4 /* CommentService.swift */; };
 		AC16645F2F0B7A53008993BB /* DraftService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC16645E2F0B7A53008993BB /* DraftService.swift */; };
 		AC1664612F0B82B3008993BB /* Editioncolors.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1664602F0B82B3008993BB /* Editioncolors.swift */; };
@@ -75,6 +76,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AC1664722F0D000100E076C4 /* PostSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostSettingsView.swift; sourceTree = "<group>"; };
 		AC1664702F0CB00000E076C4 /* CommentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentService.swift; sourceTree = "<group>"; };
 		AC16645E2F0B7A53008993BB /* DraftService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftService.swift; sourceTree = "<group>"; };
 		AC1664602F0B82B3008993BB /* Editioncolors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Editioncolors.swift; sourceTree = "<group>"; };
@@ -340,6 +342,7 @@
 				ACD3148F2F08C30A00E076C4 /* EditPostView.swift */,
 				ACD314902F08C30A00E076C4 /* MindMapView.swift */,
 				ACD314912F08C30A00E076C4 /* PostDetailView.swift */,
+				AC1664722F0D000100E076C4 /* PostSettingsView.swift */,
 				ACD314B72F09F1F300E076C4 /* EditDraftView.swift */,
 				ACD314CF2F0A4A0700E076C4 /* Mindmapdisplayview.swift */,
 			);
@@ -519,6 +522,7 @@
 				ACD314D02F0A4A0700E076C4 /* Mindmapdisplayview.swift in Sources */,
 				ACD314BA2F09F7D000E076C4 /* HapticManager.swift in Sources */,
 				AC1664632F0BE483008993BB /* DisplayPreviewView.swift in Sources */,
+				AC1664732F0D000100E076C4 /* PostSettingsView.swift in Sources */,
 				ACD3138B2F045BAD00E076C4 /* EdawakareApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -302,16 +302,11 @@ struct CommentRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Circle()
-                .fill(
-                    LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .frame(width: isReply ? 32 : 40, height: isReply ? 32 : 40)
-                .overlay(
-                    Text(String(comment.user?.displayName.prefix(1) ?? "?"))
-                        .font(isReply ? .caption : .headline)
-                        .foregroundColor(.white)
-                )
+            if let user = comment.user {
+                UserAvatarView(user: user, size: isReply ? 32 : 40, showMutualBorder: true, currentUserId: currentUserId)
+            } else {
+                InitialAvatarView("?", size: isReply ? 32 : 40)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {

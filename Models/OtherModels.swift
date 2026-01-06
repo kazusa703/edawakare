@@ -189,10 +189,12 @@ struct DMMessage: Identifiable, Codable {
     let content: String
     var isRead: Bool
     let isFirstMessage: Bool
+    var fromPostId: UUID?
+    var fromPostTitle: String?
     let createdAt: Date
-    
+
     var sender: User?
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case conversationId = "conversation_id"
@@ -200,10 +202,12 @@ struct DMMessage: Identifiable, Codable {
         case content
         case isRead = "is_read"
         case isFirstMessage = "is_first_message"
+        case fromPostId = "from_post_id"
+        case fromPostTitle = "from_post_title"
         case createdAt = "created_at"
         case sender
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -212,15 +216,17 @@ struct DMMessage: Identifiable, Codable {
         content = try container.decode(String.self, forKey: .content)
         isRead = try container.decodeIfPresent(Bool.self, forKey: .isRead) ?? false
         isFirstMessage = try container.decodeIfPresent(Bool.self, forKey: .isFirstMessage) ?? false
+        fromPostId = try container.decodeIfPresent(UUID.self, forKey: .fromPostId)
+        fromPostTitle = try container.decodeIfPresent(String.self, forKey: .fromPostTitle)
         sender = try container.decodeIfPresent(User.self, forKey: .sender)
-        
+
         if let dateString = try? container.decode(String.self, forKey: .createdAt) {
             createdAt = ISO8601DateFormatter().date(from: dateString) ?? Date()
         } else {
             createdAt = Date()
         }
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -229,15 +235,19 @@ struct DMMessage: Identifiable, Codable {
         try container.encode(content, forKey: .content)
         try container.encode(isRead, forKey: .isRead)
         try container.encode(isFirstMessage, forKey: .isFirstMessage)
+        try container.encodeIfPresent(fromPostId, forKey: .fromPostId)
+        try container.encodeIfPresent(fromPostTitle, forKey: .fromPostTitle)
     }
-    
-    init(id: UUID = UUID(), conversationId: UUID, senderId: UUID, content: String, isRead: Bool = false, isFirstMessage: Bool = false, createdAt: Date = Date(), sender: User? = nil) {
+
+    init(id: UUID = UUID(), conversationId: UUID, senderId: UUID, content: String, isRead: Bool = false, isFirstMessage: Bool = false, fromPostId: UUID? = nil, fromPostTitle: String? = nil, createdAt: Date = Date(), sender: User? = nil) {
         self.id = id
         self.conversationId = conversationId
         self.senderId = senderId
         self.content = content
         self.isRead = isRead
         self.isFirstMessage = isFirstMessage
+        self.fromPostId = fromPostId
+        self.fromPostTitle = fromPostTitle
         self.createdAt = createdAt
         self.sender = sender
     }

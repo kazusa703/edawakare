@@ -279,11 +279,11 @@ class InteractionService {
     
     func isFollowing(followerId: UUID, followingId: UUID) async throws -> Bool {
         print("🟡 [フォロー確認] 開始 - follower: \(followerId), following: \(followingId)")
-        
+
         struct FollowCheck: Decodable {
             let follower_id: UUID
         }
-        
+
         do {
             let response: [FollowCheck] = try await SupabaseClient.shared.client
                 .from("follows")
@@ -292,12 +292,31 @@ class InteractionService {
                 .eq("following_id", value: followingId.uuidString)
                 .execute()
                 .value
-            
+
             let result = !response.isEmpty
             print("✅ [フォロー確認] 結果: \(result)")
             return result
         } catch {
             print("🔴 [フォロー確認] エラー: \(error)")
+            throw error
+        }
+    }
+
+    // MARK: - 相互フォロー確認
+    func isMutualFollow(userId1: UUID, userId2: UUID) async throws -> Bool {
+        print("🟡 [相互フォロー確認] 開始 - userId1: \(userId1), userId2: \(userId2)")
+
+        do {
+            // userId1 が userId2 をフォローしているか
+            let user1FollowsUser2 = try await isFollowing(followerId: userId1, followingId: userId2)
+            // userId2 が userId1 をフォローしているか
+            let user2FollowsUser1 = try await isFollowing(followerId: userId2, followingId: userId1)
+
+            let result = user1FollowsUser2 && user2FollowsUser1
+            print("✅ [相互フォロー確認] 結果: \(result)")
+            return result
+        } catch {
+            print("🔴 [相互フォロー確認] エラー: \(error)")
             throw error
         }
     }
