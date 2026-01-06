@@ -74,7 +74,7 @@ struct StyledNode: Identifiable, Equatable {
     var isCenter: Bool
     var parentId: UUID?
     var style: NodeStyleData
-    var detail: String  // ノードの詳細（200文字まで）
+    var detail: String
     
     var hasDetail: Bool {
         !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

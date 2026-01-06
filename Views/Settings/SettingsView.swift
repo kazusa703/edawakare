@@ -101,7 +101,7 @@ struct SettingsView: View {
             NavigationLink(destination: FavoriteStyleEditorView()) {
                 Label("プリセット編集", systemImage: "paintpalette")
             }
-            NavigationLink(destination: NotificationSettingsView()) {
+            NavigationLink(destination: NotificationSettingsView().environmentObject(authService)) {
                 Label("通知設定", systemImage: "bell")
             }
             NavigationLink(destination: BlockedUsersView().environmentObject(authService)) {
@@ -311,51 +311,6 @@ struct AccountInfoView: View {
     }
 }
 
-// MARK: - プロフィールアバター（URL対応版）
-struct ProfileAvatarView: View {
-    let user: User?
-    var size: CGFloat = 50
-    
-    var body: some View {
-        Group {
-            if let avatarUrl = user?.avatarUrl, let url = URL(string: avatarUrl) {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(width: size, height: size)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: size, height: size)
-                            .clipShape(Circle())
-                    case .failure:
-                        defaultAvatar
-                    @unknown default:
-                        defaultAvatar
-                    }
-                }
-            } else {
-                defaultAvatar
-            }
-        }
-    }
-    
-    private var defaultAvatar: some View {
-        Circle()
-            .fill(
-                LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
-            .frame(width: size, height: size)
-            .overlay(
-                Text(String(user?.displayName.prefix(1) ?? "?"))
-                    .font(.system(size: size * 0.4))
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-            )
-    }
-}
 
 // MARK: - プロフィール編集シート（アバターアップロード対応）
 struct EditProfileSheet: View {
@@ -1091,19 +1046,124 @@ struct DraftRowView: View {
 
 // MARK: - 通知設定
 struct NotificationSettingsView: View {
-    @State private var likeNotification = true
-    @State private var commentNotification = true
-    @State private var followNotification = true
-    @State private var dmNotification = true
-    
+    @EnvironmentObject var authService: AuthService
+    @State private var settings: NotificationSettings?
+    @State private var isLoading = true
+    @State private var isSaving = false
+
     var body: some View {
-        List {
-            Toggle("いいね通知", isOn: $likeNotification)
-            Toggle("コメント通知", isOn: $commentNotification)
-            Toggle("フォロー通知", isOn: $followNotification)
-            Toggle("DM通知", isOn: $dmNotification)
+        Group {
+            if isLoading {
+                ProgressView()
+            } else if let settings = settings {
+                List {
+                    // いいねセクション
+                    Section("いいね") {
+                        Toggle("アプリ内通知", isOn: binding(for: \.likeInAppEnabled))
+                        Toggle("プッシュ通知", isOn: binding(for: \.likePushEnabled))
+                        batchCountPicker(title: "まとめ通知", keyPath: \.likeBatchCount)
+                    }
+
+                    // コメントセクション
+                    Section("コメント") {
+                        Toggle("アプリ内通知", isOn: binding(for: \.commentInAppEnabled))
+                        Toggle("プッシュ通知", isOn: binding(for: \.commentPushEnabled))
+                        batchCountPicker(title: "まとめ通知", keyPath: \.commentBatchCount)
+                    }
+
+                    // フォローセクション
+                    Section("フォロー") {
+                        Toggle("アプリ内通知", isOn: binding(for: \.followInAppEnabled))
+                        Toggle("プッシュ通知", isOn: binding(for: \.followPushEnabled))
+                        batchCountPicker(title: "まとめ通知", keyPath: \.followBatchCount)
+                    }
+
+                    // DMセクション
+                    Section("DM") {
+                        Toggle("アプリ内通知", isOn: binding(for: \.dmInAppEnabled))
+                        Toggle("プッシュ通知", isOn: binding(for: \.dmPushEnabled))
+                        batchCountPicker(title: "まとめ通知", keyPath: \.dmBatchCount)
+                    }
+                }
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 40))
+                        .foregroundColor(.secondary)
+                    Text("設定を読み込めませんでした")
+                        .foregroundColor(.secondary)
+                    Button("再読み込み") {
+                        Task { await loadSettings() }
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
         }
         .navigationTitle("通知設定")
+        .task {
+            await loadSettings()
+        }
+    }
+
+    // MARK: - Binding Helper
+    private func binding(for keyPath: WritableKeyPath<NotificationSettings, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { settings?[keyPath: keyPath] ?? false },
+            set: { newValue in
+                settings?[keyPath: keyPath] = newValue
+                saveSettings()
+            }
+        )
+    }
+
+    // MARK: - Batch Count Picker
+    @ViewBuilder
+    private func batchCountPicker(title: String, keyPath: WritableKeyPath<NotificationSettings, Int>) -> some View {
+        Picker(title, selection: Binding(
+            get: { settings?[keyPath: keyPath] ?? 1 },
+            set: { newValue in
+                settings?[keyPath: keyPath] = newValue
+                saveSettings()
+            }
+        )) {
+            Text("1件ごと").tag(1)
+            Text("10件ごと").tag(10)
+        }
+        .pickerStyle(.segmented)
+    }
+
+    // MARK: - Load Settings
+    private func loadSettings() async {
+        guard let userId = authService.currentUser?.id else {
+            isLoading = false
+            return
+        }
+
+        do {
+            if let existingSettings = try await PushNotificationService.shared.getNotificationSettings(userId: userId) {
+                settings = existingSettings
+            } else {
+                settings = NotificationSettings.defaultSettings(userId: userId)
+            }
+        } catch {
+            print("🔴 [NotificationSettings] 読み込みエラー: \(error)")
+            settings = NotificationSettings.defaultSettings(userId: userId)
+        }
+        isLoading = false
+    }
+
+    // MARK: - Save Settings
+    private func saveSettings() {
+        guard let settings = settings else { return }
+
+        Task {
+            do {
+                try await PushNotificationService.shared.saveNotificationSettings(settings: settings)
+                print("✅ [NotificationSettings] 保存完了")
+            } catch {
+                print("🔴 [NotificationSettings] 保存エラー: \(error)")
+            }
+        }
     }
 }
 

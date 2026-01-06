@@ -10,19 +10,25 @@ struct Post: Identifiable, Codable {
     var commentCount: Int
     let isDeleted: Bool
     var isPinned: Bool
-    var visibility: String  // "public" or "followers_only"
+    var visibility: String
     var commentsEnabled: Bool
     var allowSave: Bool
+    var hideLikeCount: Bool
     let createdAt: Date
     let updatedAt: Date
     var style: String?
-    
-    // リレーション（JOINで取得）
+    var currentEdition: Int  // 追加: 現在の編集回数
+
+    // フィード表示設定
+    var displayScale: Double
+    var displayOffsetX: Double
+    var displayOffsetY: Double
+
+    // リレーション
     var user: User?
     var nodes: [Node]?
     var connections: [NodeConnection]?
     
-    // isPublic 計算プロパティ（追加）
     var isPublic: Bool {
         get { visibility == "public" }
         set { visibility = newValue ? "public" : "followers_only" }
@@ -39,12 +45,17 @@ struct Post: Identifiable, Codable {
         case allowSave = "allow_save"
         case visibility
         case commentsEnabled = "comments_enabled"
+        case hideLikeCount = "hide_like_count"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case user
         case nodes
         case connections
         case style
+        case currentEdition = "current_edition"
+        case displayScale = "display_scale"
+        case displayOffsetX = "display_offset_x"
+        case displayOffsetY = "display_offset_y"
     }
     
     init(from decoder: Decoder) throws {
@@ -59,7 +70,12 @@ struct Post: Identifiable, Codable {
         allowSave = try container.decodeIfPresent(Bool.self, forKey: .allowSave) ?? true
         visibility = try container.decodeIfPresent(String.self, forKey: .visibility) ?? "public"
         commentsEnabled = try container.decodeIfPresent(Bool.self, forKey: .commentsEnabled) ?? true
-        
+        hideLikeCount = try container.decodeIfPresent(Bool.self, forKey: .hideLikeCount) ?? false
+        currentEdition = try container.decodeIfPresent(Int.self, forKey: .currentEdition) ?? 1
+        displayScale = try container.decodeIfPresent(Double.self, forKey: .displayScale) ?? 1.0
+        displayOffsetX = try container.decodeIfPresent(Double.self, forKey: .displayOffsetX) ?? 0
+        displayOffsetY = try container.decodeIfPresent(Double.self, forKey: .displayOffsetY) ?? 0
+
         if let dateString = try? container.decode(String.self, forKey: .createdAt) {
             createdAt = ISO8601DateFormatter().date(from: dateString) ?? Date()
         } else {
@@ -75,6 +91,7 @@ struct Post: Identifiable, Codable {
         user = try container.decodeIfPresent(User.self, forKey: .user)
         nodes = try container.decodeIfPresent([Node].self, forKey: .nodes)
         connections = try container.decodeIfPresent([NodeConnection].self, forKey: .connections)
+        style = try container.decodeIfPresent(String.self, forKey: .style)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -89,9 +106,13 @@ struct Post: Identifiable, Codable {
         try container.encode(visibility, forKey: .visibility)
         try container.encode(commentsEnabled, forKey: .commentsEnabled)
         try container.encode(allowSave, forKey: .allowSave)
+        try container.encode(hideLikeCount, forKey: .hideLikeCount)
+        try container.encode(currentEdition, forKey: .currentEdition)
+        try container.encode(displayScale, forKey: .displayScale)
+        try container.encode(displayOffsetX, forKey: .displayOffsetX)
+        try container.encode(displayOffsetY, forKey: .displayOffsetY)
     }
     
-    // イニシャライザ（allowSave パラメータを追加）
     init(
         id: UUID = UUID(),
         userId: UUID,
@@ -102,12 +123,17 @@ struct Post: Identifiable, Codable {
         isPinned: Bool = false,
         visibility: String = "public",
         commentsEnabled: Bool = true,
-        allowSave: Bool = true,  // ← 追加
+        allowSave: Bool = true,
+        hideLikeCount: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         user: User? = nil,
         nodes: [Node]? = nil,
-        connections: [NodeConnection]? = nil
+        connections: [NodeConnection]? = nil,
+        currentEdition: Int = 1,
+        displayScale: Double = 1.0,
+        displayOffsetX: Double = 0,
+        displayOffsetY: Double = 0
     ) {
         self.id = id
         self.userId = userId
@@ -118,11 +144,16 @@ struct Post: Identifiable, Codable {
         self.isPinned = isPinned
         self.visibility = visibility
         self.commentsEnabled = commentsEnabled
-        self.allowSave = allowSave  // ← これでエラー解消
+        self.allowSave = allowSave
+        self.hideLikeCount = hideLikeCount
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.user = user
         self.nodes = nodes
         self.connections = connections
+        self.currentEdition = currentEdition
+        self.displayScale = displayScale
+        self.displayOffsetX = displayOffsetX
+        self.displayOffsetY = displayOffsetY
     }
 }

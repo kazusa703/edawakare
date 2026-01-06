@@ -71,7 +71,7 @@ struct DeepLinkPostView: View {
         print("🔗 [DeepLinkPostView] 投稿取得開始: \(postId)")
         
         do {
-            post = try await PostService.shared.fetchPost(postId: postId)
+            let post = try await PostService.shared.fetchPostDetail(postId: postId)
             print("✅ [DeepLinkPostView] 投稿取得成功")
         } catch {
             errorMessage = error.localizedDescription

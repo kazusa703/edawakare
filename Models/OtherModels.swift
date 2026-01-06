@@ -10,20 +10,22 @@ struct Comment: Identifiable, Codable {
     let postId: UUID
     let content: String
     let parentCommentId: UUID?
+    var likeCount: Int
     let createdAt: Date
     var user: User?
     var replies: [Comment]? = nil
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
         case postId = "post_id"
         case content
         case parentCommentId = "parent_comment_id"
+        case likeCount = "like_count"
         case createdAt = "created_at"
         case user
     }
-    
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -31,16 +33,17 @@ struct Comment: Identifiable, Codable {
         postId = try container.decode(UUID.self, forKey: .postId)
         content = try container.decode(String.self, forKey: .content)
         parentCommentId = try container.decodeIfPresent(UUID.self, forKey: .parentCommentId)
+        likeCount = try container.decodeIfPresent(Int.self, forKey: .likeCount) ?? 0
         user = try container.decodeIfPresent(User.self, forKey: .user)
         replies = nil
-        
+
         if let dateString = try? container.decode(String.self, forKey: .createdAt) {
             createdAt = ISO8601DateFormatter().date(from: dateString) ?? Date()
         } else {
             createdAt = Date()
         }
     }
-    
+
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -48,14 +51,16 @@ struct Comment: Identifiable, Codable {
         try container.encode(postId, forKey: .postId)
         try container.encode(content, forKey: .content)
         try container.encodeIfPresent(parentCommentId, forKey: .parentCommentId)
+        try container.encode(likeCount, forKey: .likeCount)
     }
-    
-    init(id: UUID = UUID(), userId: UUID, postId: UUID, content: String, parentCommentId: UUID? = nil, createdAt: Date = Date(), user: User? = nil, replies: [Comment]? = nil) {
+
+    init(id: UUID = UUID(), userId: UUID, postId: UUID, content: String, parentCommentId: UUID? = nil, likeCount: Int = 0, createdAt: Date = Date(), user: User? = nil, replies: [Comment]? = nil) {
         self.id = id
         self.userId = userId
         self.postId = postId
         self.content = content
         self.parentCommentId = parentCommentId
+        self.likeCount = likeCount
         self.createdAt = createdAt
         self.user = user
         self.replies = replies

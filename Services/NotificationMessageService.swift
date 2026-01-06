@@ -309,22 +309,29 @@ class MessageService {
     
     func createConversation(user1Id: UUID, user2Id: UUID) async throws -> Conversation {
         do {
+            // 既存の会話があればそれを返す
             let existing: [Conversation] = try await SupabaseClient.shared.client
                 .from("conversations")
                 .select()
                 .or("and(user1_id.eq.\(user1Id.uuidString),user2_id.eq.\(user2Id.uuidString)),and(user1_id.eq.\(user2Id.uuidString),user2_id.eq.\(user1Id.uuidString))")
                 .execute()
                 .value
-            
+
             if let existingConv = existing.first {
                 return existingConv
             }
-            
+
+            // DM制限チェック
+            let canDM = try await checkDMPermission(senderId: user1Id, receiverId: user2Id)
+            guard canDM else {
+                throw DMError.notAllowed
+            }
+
             struct ConversationInsert: Encodable {
                 let user1_id: String
                 let user2_id: String
             }
-            
+
             let conversation: Conversation = try await SupabaseClient.shared.client
                 .from("conversations")
                 .insert(ConversationInsert(user1_id: user1Id.uuidString, user2_id: user2Id.uuidString))
@@ -332,11 +339,71 @@ class MessageService {
                 .single()
                 .execute()
                 .value
-            
+
             return conversation
         } catch {
             print("🔴 [会話作成] エラー: \(error)")
             throw error
+        }
+    }
+
+    // MARK: - DM制限チェック
+    /// dm_permission: everyone / followers / following / none
+    func checkDMPermission(senderId: UUID, receiverId: UUID) async throws -> Bool {
+        print("🟡 [DM制限チェック] 開始")
+
+        // 相手のDM設定を取得
+        let receiver: User = try await SupabaseClient.shared.client
+            .from("users")
+            .select()
+            .eq("id", value: receiverId.uuidString)
+            .single()
+            .execute()
+            .value
+
+        let permission = receiver.dmPermission
+
+        switch permission {
+        case "none":
+            print("🔴 [DM制限] 相手はDMを受け付けていません")
+            return false
+
+        case "everyone":
+            print("✅ [DM制限] 誰でもDM可能")
+            return true
+
+        case "followers":
+            // 相手が送信者をフォローしているか確認
+            let isFollower = try await InteractionService.shared.isFollowing(
+                followerId: receiverId,
+                followingId: senderId
+            )
+            print(isFollower ? "✅ [DM制限] フォロワーなのでDM可能" : "🔴 [DM制限] フォロワーではないのでDM不可")
+            return isFollower
+
+        case "following":
+            // 相手が送信者をフォローしているか確認（相手がフォローしている人のみ）
+            let isFollowing = try await InteractionService.shared.isFollowing(
+                followerId: receiverId,
+                followingId: senderId
+            )
+            print(isFollowing ? "✅ [DM制限] フォロー中なのでDM可能" : "🔴 [DM制限] フォロー中ではないのでDM不可")
+            return isFollowing
+
+        default:
+            return true
+        }
+    }
+}
+
+// MARK: - DMエラー
+enum DMError: LocalizedError {
+    case notAllowed
+
+    var errorDescription: String? {
+        switch self {
+        case .notAllowed:
+            return "この相手にはDMを送れません"
         }
     }
 }

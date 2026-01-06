@@ -40,23 +40,15 @@ struct DMListView: View {
                 NewMessageView()
                     .environmentObject(authService)
             }
-            .task {
-                await loadConversations()
-            }
-            .refreshable {
-                await loadConversations()
-            }
+            .task { await loadConversations() }
+            .refreshable { await loadConversations() }
         }
     }
     
     private func loadConversations() async {
         guard let userId = authService.currentUser?.id else { return }
         isLoading = true
-        do {
-            conversations = try await MessageService.shared.fetchConversations(userId: userId)
-        } catch {
-            print("🔴 [DMListView] loadConversations error: \(error)")
-        }
+        conversations = (try? await MessageService.shared.fetchConversations(userId: userId)) ?? []
         isLoading = false
     }
     
@@ -65,9 +57,7 @@ struct DMListView: View {
             let conversation = conversations[index]
             Task {
                 try? await MessageService.shared.deleteConversation(conversationId: conversation.id)
-                await MainActor.run {
-                    conversations.remove(at: index)
-                }
+                await MainActor.run { conversations.remove(at: index) }
             }
         }
     }
@@ -79,27 +69,15 @@ struct ConversationRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // アバター
-            Circle()
-                .fill(
-                    LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .frame(width: 50, height: 50)
-                .overlay(
-                    Text(String(conversation.otherUser?.displayName.prefix(1) ?? "?"))
-                        .font(.headline)
-                        .foregroundColor(.white)
-                )
+            InitialAvatarView(conversation.otherUser?.displayName ?? "?", size: 50)
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(conversation.otherUser?.displayName ?? "ユーザー")
                         .font(.headline)
-                    
                     Spacer()
-                    
                     if let lastMessageAt = conversation.lastMessageAt {
-                        Text(timeAgoString(from: lastMessageAt))
+                        Text(TimeFormatter.timeAgo(from: lastMessageAt))
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -112,22 +90,6 @@ struct ConversationRow: View {
             }
         }
         .padding(.vertical, 4)
-    }
-    
-    private func timeAgoString(from date: Date) -> String {
-        let seconds = Int(-date.timeIntervalSinceNow)
-        
-        if seconds < 60 {
-            return "たった今"
-        } else if seconds < 3600 {
-            return "\(seconds / 60)分前"
-        } else if seconds < 86400 {
-            return "\(seconds / 3600)時間前"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "M/d"
-            return formatter.string(from: date)
-        }
     }
 }
 
@@ -142,7 +104,6 @@ struct ChatView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // メッセージ一覧
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 12) {
@@ -158,58 +119,24 @@ struct ChatView: View {
                 }
                 .onChange(of: messages.count) { _, _ in
                     if let lastMessage = messages.last {
-                        withAnimation {
-                            proxy.scrollTo(lastMessage.id, anchor: .bottom)
-                        }
+                        withAnimation { proxy.scrollTo(lastMessage.id, anchor: .bottom) }
                     }
                 }
             }
             
             Divider()
-            
-            // 入力欄
-            HStack(spacing: 12) {
-                TextField("メッセージを入力...", text: $newMessageText)
-                    .padding(12)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(20)
-                
-                Button(action: sendMessage) {
-                    if isSending {
-                        ProgressView()
-                            .frame(width: 36, height: 36)
-                    } else {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 36))
-                            .foregroundColor(
-                                newMessageText.trimmingCharacters(in: .whitespaces).isEmpty
-                                ? .gray
-                                : .purple
-                            )
-                    }
-                }
-                .disabled(newMessageText.trimmingCharacters(in: .whitespaces).isEmpty || isSending)
-            }
-            .padding()
+            MessageInputBar(text: $newMessageText, isSending: isSending, onSend: sendMessage)
         }
         .navigationTitle(conversation.otherUser?.displayName ?? "チャット")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await loadMessages()
-        }
+        .task { await loadMessages() }
     }
     
     private func loadMessages() async {
         isLoading = true
-        do {
-            messages = try await MessageService.shared.fetchMessages(conversationId: conversation.id)
-            
-            // 既読にする
-            if let userId = authService.currentUser?.id {
-                try? await MessageService.shared.markAsRead(conversationId: conversation.id, userId: userId)
-            }
-        } catch {
-            print("🔴 [ChatView] loadMessages error: \(error)")
+        messages = (try? await MessageService.shared.fetchMessages(conversationId: conversation.id)) ?? []
+        if let userId = authService.currentUser?.id {
+            try? await MessageService.shared.markAsRead(conversationId: conversation.id, userId: userId)
         }
         isLoading = false
     }
@@ -220,31 +147,55 @@ struct ChatView: View {
         guard !text.isEmpty else { return }
         
         isSending = true
-        
         Task {
-            do {
-                // sendMessage を呼び出す前に otherUserId を計算
-                let otherUserId = conversation.user1Id == userId ? conversation.user2Id : conversation.user1Id
-                
-                let message = try await MessageService.shared.sendMessage(
-                    conversationId: conversation.id,
-                    senderId: userId,
-                    receiverId: otherUserId,
-                    content: text
-                )
-                
+            let otherUserId = conversation.user1Id == userId ? conversation.user2Id : conversation.user1Id
+            if let message = try? await MessageService.shared.sendMessage(
+                conversationId: conversation.id,
+                senderId: userId,
+                receiverId: otherUserId,
+                content: text
+            ) {
                 await MainActor.run {
                     messages.append(message)
                     newMessageText = ""
-                    isSending = false
-                }
-            } catch {
-                print("🔴 [DM] メッセージ送信エラー: \(error)")
-                await MainActor.run {
-                    isSending = false
                 }
             }
+            await MainActor.run { isSending = false }
         }
+    }
+}
+
+// MARK: - メッセージ入力バー
+struct MessageInputBar: View {
+    @Binding var text: String
+    let isSending: Bool
+    let onSend: () -> Void
+    var placeholder: String = "メッセージを入力..."
+    
+    private var canSend: Bool {
+        !text.trimmingCharacters(in: .whitespaces).isEmpty && !isSending
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            TextField(placeholder, text: $text)
+                .padding(12)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(20)
+            
+            Button(action: onSend) {
+                if isSending {
+                    ProgressView()
+                        .frame(width: 36, height: 36)
+                } else {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundColor(canSend ? .purple : .gray)
+                }
+            }
+            .disabled(!canSend)
+        }
+        .padding()
     }
 }
 
@@ -263,25 +214,19 @@ struct MessageBubble: View {
                     .padding(.vertical, 10)
                     .background(
                         isFromMe
-                        ? LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        ? AppColors.primaryGradient
                         : LinearGradient(colors: [Color(.secondarySystemBackground)], startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
                     .foregroundColor(isFromMe ? .white : .primary)
                     .cornerRadius(20)
                 
-                Text(timeString(from: message.createdAt))
+                Text(TimeFormatter.timeOnly(from: message.createdAt))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
             
             if !isFromMe { Spacer() }
         }
-    }
-    
-    private func timeString(from date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
     }
 }
 
@@ -292,11 +237,9 @@ struct EmptyDMView: View {
             Image(systemName: "bubble.left.and.bubble.right")
                 .font(.system(size: 60))
                 .foregroundColor(.purple.opacity(0.5))
-            
             Text("メッセージがありません")
                 .font(.headline)
                 .foregroundColor(.secondary)
-            
             Text("右上のボタンから新しいメッセージを送れます")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
@@ -317,49 +260,16 @@ struct NewMessageView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // 検索バー
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                    
-                    TextField("ユーザーを検索...", text: $searchText)
-                        .autocapitalization(.none)
-                        .onChange(of: searchText) { _, newValue in
-                            searchUsers(query: newValue)
-                        }
-                }
-                .padding(12)
-                .background(Color(.secondarySystemBackground))
-                .cornerRadius(10)
-                .padding()
+                SearchBar(text: $searchText, placeholder: "ユーザーを検索...")
+                    .onChange(of: searchText) { _, newValue in searchUsers(query: newValue) }
+                    .padding()
                 
-                // 検索結果
                 if isSearching {
-                    ProgressView()
-                        .padding()
+                    ProgressView().padding()
                 } else {
                     List(searchResults) { user in
                         Button(action: { startConversation(with: user) }) {
-                            HStack(spacing: 12) {
-                                Circle()
-                                    .fill(
-                                        LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                    )
-                                    .frame(width: 40, height: 40)
-                                    .overlay(
-                                        Text(String(user.displayName.prefix(1)))
-                                            .font(.headline)
-                                            .foregroundColor(.white)
-                                    )
-                                
-                                VStack(alignment: .leading) {
-                                    Text(user.displayName)
-                                        .font(.headline)
-                                    Text("@\(user.username)")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
+                            UserRowSimple(user: user)
                         }
                     }
                     .listStyle(.plain)
@@ -382,32 +292,54 @@ struct NewMessageView: View {
             searchResults = []
             return
         }
-        
         isSearching = true
-        
         Task {
-            do {
-                searchResults = try await UserService.shared.searchUsers(query: query)
-                // 自分自身を除外
-                searchResults = searchResults.filter { $0.id != authService.currentUser?.id }
-            } catch {
-                print("🔴 [NewMessageView] searchUsers error: \(error)")
-            }
+            searchResults = ((try? await UserService.shared.searchUsers(query: query)) ?? [])
+                .filter { $0.id != authService.currentUser?.id }
             isSearching = false
         }
     }
     
     private func startConversation(with user: User) {
         guard let myId = authService.currentUser?.id else { return }
-        
         Task {
-            do {
-                _ = try await MessageService.shared.createConversation(user1Id: myId, user2Id: user.id)
-                await MainActor.run {
-                    dismiss()
-                }
-            } catch {
-                print("🔴 [NewMessageView] startConversation error: \(error)")
+            _ = try? await MessageService.shared.createConversation(user1Id: myId, user2Id: user.id)
+            await MainActor.run { dismiss() }
+        }
+    }
+}
+
+// MARK: - 検索バー
+struct SearchBar: View {
+    @Binding var text: String
+    var placeholder: String = "検索..."
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+            TextField(placeholder, text: $text)
+                .autocapitalization(.none)
+        }
+        .padding(12)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(10)
+    }
+}
+
+// MARK: - シンプルユーザー行
+struct UserRowSimple: View {
+    let user: User
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            InitialAvatarView(user.displayName, size: 40)
+            VStack(alignment: .leading) {
+                Text(user.displayName)
+                    .font(.headline)
+                Text("@\(user.username)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
         }
     }

@@ -4,7 +4,7 @@
 import Foundation
 import Supabase
 
-// MARK: - 入力用の構造体（トップレベルに移動）
+// MARK: - 入力用の構造体
 struct NodeInput {
     let localId: String
     let text: String
@@ -12,9 +12,9 @@ struct NodeInput {
     let positionY: Double
     let isCenter: Bool
     var note: String?
-    var style: String?  // 追加
+    var style: String?
+    var edition: Int = 1  // 追加
 }
-
 
 struct ConnectionInput {
     let fromLocalId: String
@@ -28,10 +28,10 @@ class PostService {
     
     private init() {}
     
-    // MARK: - 投稿一覧取得（おすすめ）- 自分の投稿を除外
-    func fetchPosts(limit: Int = 50, excludeUserId: UUID? = nil) async throws -> [Post] {
-        print("🟡 [投稿一覧] 開始 - limit: \(limit), excludeUserId: \(String(describing: excludeUserId))")
-        
+    // MARK: - 投稿一覧取得（おすすめ）- 公開範囲フィルタリング対応
+    func fetchPosts(limit: Int = 50, excludeUserId: UUID? = nil, currentUserId: UUID? = nil) async throws -> [Post] {
+        print("🟡 [投稿一覧] 開始 - limit: \(limit)")
+
         do {
             var query = SupabaseClient.shared.client
                 .from("posts")
@@ -42,17 +42,18 @@ class PostService {
                     connections:node_connections(*)
                 """)
                 .eq("is_deleted", value: false)
-            
+                .eq("visibility", value: "public")  // publicのみ表示
+
             if let excludeId = excludeUserId {
                 query = query.neq("user_id", value: excludeId.uuidString)
             }
-            
+
             let posts: [Post] = try await query
                 .order("created_at", ascending: false)
                 .limit(limit)
                 .execute()
                 .value
-            
+
             print("✅ [投稿一覧] 成功 - 件数: \(posts.count)")
             return posts
         } catch {
@@ -61,15 +62,14 @@ class PostService {
         }
     }
     
-    // MARK: - フォロー中の投稿取得
-    /// MARK: - フォロー中の投稿取得
+    // MARK: - フォロー中の投稿取得 - 公開範囲フィルタリング対応
     func fetchFollowingPosts(userId: UUID, limit: Int = 50) async throws -> [Post] {
         print("🟡 [フォロー中投稿] 開始 - userId: \(userId)")
-        
+
         struct FollowingId: Decodable {
             let following_id: UUID
         }
-        
+
         do {
             let follows: [FollowingId] = try await SupabaseClient.shared.client
                 .from("follows")
@@ -77,15 +77,16 @@ class PostService {
                 .eq("follower_id", value: userId.uuidString)
                 .execute()
                 .value
-            
+
             let followingIds = follows.map { $0.following_id.uuidString }
             print("🟡 [フォロー中投稿] フォロー中: \(followingIds.count)人")
-            
+
             guard !followingIds.isEmpty else {
                 print("✅ [フォロー中投稿] フォロー中のユーザーなし")
                 return []
             }
-            
+
+            // フォロワーにはpublicとfollowersの投稿を表示
             let posts: [Post] = try await SupabaseClient.shared.client
                 .from("posts")
                 .select("""
@@ -96,11 +97,12 @@ class PostService {
                 """)
                 .eq("is_deleted", value: false)
                 .in("user_id", values: followingIds)
+                .or("visibility.eq.public,visibility.eq.followers")
                 .order("created_at", ascending: false)
                 .limit(limit)
                 .execute()
                 .value
-            
+
             print("✅ [フォロー中投稿] 成功 - 件数: \(posts.count)")
             return posts
         } catch {
@@ -110,7 +112,7 @@ class PostService {
     }
     
     // MARK: - ユーザーの投稿取得
-    func fetchUserPosts(userId: UUID) async throws -> [Post] {
+    func fetchUserPosts(userId: UUID, limit: Int = 50) async throws -> [Post] {
         print("🟡 [ユーザー投稿] 開始 - userId: \(userId)")
         
         do {
@@ -125,6 +127,7 @@ class PostService {
                 .eq("user_id", value: userId.uuidString)
                 .eq("is_deleted", value: false)
                 .order("created_at", ascending: false)
+                .limit(limit)
                 .execute()
                 .value
             
@@ -137,7 +140,7 @@ class PostService {
     }
     
     // MARK: - 投稿詳細取得
-    func fetchPost(postId: UUID) async throws -> Post {
+    func fetchPostDetail(postId: UUID) async throws -> Post {
         print("🟡 [投稿詳細] 開始 - postId: \(postId)")
         
         do {
@@ -154,7 +157,7 @@ class PostService {
                 .execute()
                 .value
             
-            print("✅ [投稿詳細] 成功 - centerNodeText: \(post.centerNodeText)")
+            print("✅ [投稿詳細] 成功")
             return post
         } catch {
             print("🔴 [投稿詳細] エラー: \(error)")
@@ -163,21 +166,66 @@ class PostService {
     }
     
     // MARK: - 投稿作成
-    func createPost(userId: UUID, centerNodeText: String, nodes: [NodeInput], connections: [ConnectionInput]) async throws -> Post {
-        print("🟡 [投稿作成] 開始 - userId: \(userId), centerNodeText: \(centerNodeText)")
-        print("🟡 [投稿作成] ノード数: \(nodes.count), コネクション数: \(connections.count)")
+    func createPost(
+        userId: UUID,
+        centerNodeText: String,
+        nodes: [NodeInput],
+        connections: [ConnectionInput],
+        visibility: String = "public",
+        commentsEnabled: Bool = true,
+        allowSave: Bool = true,
+        displayScale: Double = 1.0,
+        displayOffsetX: Double = 0,
+        displayOffsetY: Double = 0
+    ) async throws -> Post {
+        print("🟡 [投稿作成] 開始")
+
+        struct PostInsert: Encodable {
+            let user_id: String
+            let center_node_text: String
+            let visibility: String
+            let comments_enabled: Bool
+            let allow_save: Bool
+            let current_edition: Int
+            let display_scale: Double
+            let display_offset_x: Double
+            let display_offset_y: Double
+        }
+        
+        struct NodeInsert: Encodable {
+            let post_id: String
+            let text: String
+            let position_x: Double
+            let position_y: Double
+            let is_center: Bool
+            let note: String?
+            let style: String?
+            let edition: Int
+        }
+        
+        struct ConnectionInsert: Encodable {
+            let post_id: String
+            let from_node_id: String
+            let to_node_id: String
+            let reason: String?
+            let style: String?
+        }
         
         do {
-            // 1. 投稿を作成
-            struct PostInsert: Encodable {
-                let user_id: String
-                let center_node_text: String
-            }
+            // 1. 投稿を作成（edition = 1 で開始）
+            let postInsert = PostInsert(
+                user_id: userId.uuidString,
+                center_node_text: centerNodeText,
+                visibility: visibility,
+                comments_enabled: commentsEnabled,
+                allow_save: allowSave,
+                current_edition: 1,
+                display_scale: displayScale,
+                display_offset_x: displayOffsetX,
+                display_offset_y: displayOffsetY
+            )
             
-            let postInsert = PostInsert(user_id: userId.uuidString, center_node_text: centerNodeText)
-            
-            print("🟡 [投稿作成] 投稿レコード作成中...")
-            let createdPost: Post = try await SupabaseClient.shared.client
+            let post: Post = try await SupabaseClient.shared.client
                 .from("posts")
                 .insert(postInsert)
                 .select()
@@ -185,30 +233,24 @@ class PostService {
                 .execute()
                 .value
             
-            print("✅ [投稿作成] 投稿レコード作成成功 - postId: \(createdPost.id)")
+            print("🟡 [投稿作成] 投稿ID: \(post.id)")
             
-            // 2. ノードを作成
-            var nodeIdMap: [String: UUID] = [:]
+            // 2. ノードを作成（全て edition = 1）
+            var localIdToUUID: [String: UUID] = [:]
             
-            for node in nodes {
-                struct NodeInsert: Encodable {
-                    let post_id: String
-                    let text: String
-                    let position_x: Double
-                    let position_y: Double
-                    let is_center: Bool
-                }
-                
+            for nodeInput in nodes {
                 let nodeInsert = NodeInsert(
-                    post_id: createdPost.id.uuidString,
-                    text: node.text,
-                    position_x: node.positionX,
-                    position_y: node.positionY,
-                    is_center: node.isCenter
+                    post_id: post.id.uuidString,
+                    text: nodeInput.text,
+                    position_x: nodeInput.positionX,
+                    position_y: nodeInput.positionY,
+                    is_center: nodeInput.isCenter,
+                    note: nodeInput.note,
+                    style: nodeInput.style,
+                    edition: 1  // 初回投稿は全て edition = 1
                 )
                 
-                print("🟡 [投稿作成] ノード作成中 - text: \(node.text), isCenter: \(node.isCenter)")
-                let createdNode: Node = try await SupabaseClient.shared.client
+                let node: Node = try await SupabaseClient.shared.client
                     .from("nodes")
                     .insert(nodeInsert)
                     .select()
@@ -216,89 +258,57 @@ class PostService {
                     .execute()
                     .value
                 
-                nodeIdMap[node.localId] = createdNode.id
-                print("✅ [投稿作成] ノード作成成功 - nodeId: \(createdNode.id)")
+                localIdToUUID[nodeInput.localId] = node.id
             }
             
             // 3. コネクションを作成
-            for connection in connections {
-                guard let fromId = nodeIdMap[connection.fromLocalId],
-                      let toId = nodeIdMap[connection.toLocalId] else {
-                    print("🔴 [投稿作成] コネクション作成スキップ - ノードが見つからない")
-                    continue
-                }
+            for connInput in connections {
+                guard let fromId = localIdToUUID[connInput.fromLocalId],
+                      let toId = localIdToUUID[connInput.toLocalId] else { continue }
                 
-                struct ConnectionInsert: Encodable {
-                    let post_id: String
-                    let from_node_id: String
-                    let to_node_id: String
-                    let reason: String?
-                }
-                
-                let connectionInsert = ConnectionInsert(
-                    post_id: createdPost.id.uuidString,
+                let connInsert = ConnectionInsert(
+                    post_id: post.id.uuidString,
                     from_node_id: fromId.uuidString,
                     to_node_id: toId.uuidString,
-                    reason: connection.reason
+                    reason: connInput.reason,
+                    style: connInput.style
                 )
                 
-                print("🟡 [投稿作成] コネクション作成中 - from: \(fromId), to: \(toId)")
                 try await SupabaseClient.shared.client
                     .from("node_connections")
-                    .insert(connectionInsert)
+                    .insert(connInsert)
                     .execute()
-                
-                print("✅ [投稿作成] コネクション作成成功")
             }
             
-            // 4. 完成した投稿を取得して返す
-            print("🟡 [投稿作成] 完成した投稿を取得中...")
-            let finalPost = try await fetchPost(postId: createdPost.id)
-            print("✅ [投稿作成] 完了")
-            return finalPost
+            // 4. 完成した投稿を再取得
+            let completePost = try await fetchPostDetail(postId: post.id)
+            print("✅ [投稿作成] 成功")
+            return completePost
+            
         } catch {
             print("🔴 [投稿作成] エラー: \(error)")
             throw error
         }
     }
-    // MARK: - 保存許可設定を更新
-    func updateAllowSave(postId: UUID, allowSave: Bool) async throws {
-        print("🟡 [保存許可更新] 開始 - postId: \(postId), allowSave: \(allowSave)")
-        
-        do {
-            try await SupabaseClient.shared.client
-                .from("posts")
-                .update(["allow_save": allowSave])
-                .eq("id", value: postId.uuidString)
-                .execute()
-            
-            print("✅ [保存許可更新] 成功")
-        } catch {
-            print("🔴 [保存許可更新] エラー: \(error)")
-            throw error
-        }
-    }
-
-    // MARK: - 人気のノード（中心テーマ）を取得
-    func fetchPopularNodes(limit: Int = 10) async throws -> [String] {
+    
+    // MARK: - 人気のテーマ取得
+    func fetchPopularThemes(limit: Int = 10) async throws -> [String] {
         print("🟡 [人気ノード] 開始")
         
         struct PopularPost: Decodable {
             let center_node_text: String
-            let like_count: Int
         }
         
         do {
             let posts: [PopularPost] = try await SupabaseClient.shared.client
                 .from("posts")
-                .select("center_node_text, like_count")
+                .select("center_node_text")
                 .eq("is_deleted", value: false)
                 .order("like_count", ascending: false)
-                .limit(limit)
+                .limit(limit * 3)
                 .execute()
                 .value
             
-            // 重複を除去してユニークなテーマを返す
             var seen = Set<String>()
             let uniqueNodes = posts.compactMap { post -> String? in
                 let text = post.center_node_text
@@ -333,10 +343,8 @@ class PostService {
         }
     }
     
-    // PostService.swift に追加
-
     // MARK: - 投稿更新
-    func updatePost(postId: UUID, isPinned: Bool? = nil, visibility: String? = nil, commentsEnabled: Bool? = nil) async throws {
+    func updatePost(postId: UUID, isPinned: Bool? = nil, visibility: String? = nil, commentsEnabled: Bool? = nil, allowSave: Bool? = nil) async throws {
         print("🟡 [投稿更新] 開始 - postId: \(postId)")
         
         do {
@@ -363,7 +371,15 @@ class PostService {
                     .eq("id", value: postId.uuidString)
                     .execute()
             }
-            
+
+            if let allowSave = allowSave {
+                try await SupabaseClient.shared.client
+                    .from("posts")
+                    .update(["allow_save": allowSave])
+                    .eq("id", value: postId.uuidString)
+                    .execute()
+            }
+
             print("✅ [投稿更新] 成功")
         } catch {
             print("🔴 [投稿更新] エラー: \(error)")
@@ -371,11 +387,9 @@ class PostService {
         }
     }
     
-    // PostService.swift に追加
-
-    // MARK: - ノード追加
-    func addNode(postId: UUID, text: String, positionX: Double, positionY: Double, isCenter: Bool) async throws -> Node {
-        print("🟡 [ノード追加] 開始 - postId: \(postId), text: \(text)")
+    // MARK: - ノード追加（Edition対応）
+    func addNode(postId: UUID, text: String, positionX: Double, positionY: Double, isCenter: Bool, edition: Int = 1, note: String? = nil, style: String? = nil) async throws -> Node {
+        print("🟡 [ノード追加] 開始 - postId: \(postId), text: \(text), edition: \(edition)")
         
         struct NodeInsert: Encodable {
             let post_id: String
@@ -383,6 +397,9 @@ class PostService {
             let position_x: Double
             let position_y: Double
             let is_center: Bool
+            let edition: Int
+            let note: String?
+            let style: String?
         }
         
         do {
@@ -391,10 +408,11 @@ class PostService {
                 text: text,
                 position_x: positionX,
                 position_y: positionY,
-                is_center: isCenter
+                is_center: isCenter,
+                edition: edition,
+                note: note,
+                style: style
             )
-            
-            
             
             let node: Node = try await SupabaseClient.shared.client
                 .from("nodes")
@@ -413,7 +431,7 @@ class PostService {
     }
 
     // MARK: - コネクション追加
-    func addConnection(postId: UUID, fromNodeId: UUID, toNodeId: UUID, reason: String?) async throws {
+    func addConnection(postId: UUID, fromNodeId: UUID, toNodeId: UUID, reason: String?, style: String? = nil) async throws {
         print("🟡 [コネクション追加] 開始")
         
         struct ConnectionInsert: Encodable {
@@ -421,6 +439,7 @@ class PostService {
             let from_node_id: String
             let to_node_id: String
             let reason: String?
+            let style: String?
         }
         
         do {
@@ -428,7 +447,8 @@ class PostService {
                 post_id: postId.uuidString,
                 from_node_id: fromNodeId.uuidString,
                 to_node_id: toNodeId.uuidString,
-                reason: reason
+                reason: reason,
+                style: style
             )
             
             try await SupabaseClient.shared.client
@@ -443,10 +463,54 @@ class PostService {
         }
     }
     
-    // MARK: - ノードテキストで検索
+    // MARK: - Edition更新（編集完了時にインクリメント）
+    func incrementEdition(postId: UUID) async throws {
+        print("🟡 [Edition更新] 開始 - postId: \(postId)")
+        
+        do {
+            // 現在のeditionを取得
+            let post = try await fetchPostDetail(postId: postId)
+            let newEdition = post.currentEdition + 1
+            
+            try await SupabaseClient.shared.client
+                .from("posts")
+                .update(["current_edition": newEdition])
+                .eq("id", value: postId.uuidString)
+                .execute()
+            
+            print("✅ [Edition更新] 成功 - newEdition: \(newEdition)")
+        } catch {
+            print("🔴 [Edition更新] エラー: \(error)")
+            throw error
+        }
+    }
+    
+    // MARK: - フィード表示設定更新
+    func updateDisplaySettings(postId: UUID, scale: Double, offsetX: Double, offsetY: Double) async throws {
+        print("🟡 [表示設定更新] 開始 - postId: \(postId)")
+
+        do {
+            try await SupabaseClient.shared.client
+                .from("posts")
+                .update([
+                    "display_scale": scale,
+                    "display_offset_x": offsetX,
+                    "display_offset_y": offsetY
+                ])
+                .eq("id", value: postId.uuidString)
+                .execute()
+
+            print("✅ [表示設定更新] 成功")
+        } catch {
+            print("🔴 [表示設定更新] エラー: \(error)")
+            throw error
+        }
+    }
+
+    // MARK: - ノードテキストで検索 - 公開範囲フィルタリング対応
     func searchByNodeText(query: String) async throws -> [Post] {
         print("🟡 [投稿検索] 開始 - query: \(query)")
-        
+
         do {
             let posts: [Post] = try await SupabaseClient.shared.client
                 .from("posts")
@@ -458,15 +522,34 @@ class PostService {
                 """)
                 .ilike("center_node_text", pattern: "%\(query)%")
                 .eq("is_deleted", value: false)
+                .eq("visibility", value: "public")  // 検索結果はpublicのみ
                 .order("created_at", ascending: false)
                 .limit(30)
                 .execute()
                 .value
-            
+
             print("✅ [投稿検索] 成功 - 件数: \(posts.count)")
             return posts
         } catch {
             print("🔴 [投稿検索] エラー: \(error)")
+            throw error
+        }
+    }
+
+    // MARK: - 投稿更新（hideLikeCount追加）
+    func updateHideLikeCount(postId: UUID, hideLikeCount: Bool) async throws {
+        print("🟡 [いいね数非表示更新] 開始 - postId: \(postId)")
+
+        do {
+            try await SupabaseClient.shared.client
+                .from("posts")
+                .update(["hide_like_count": hideLikeCount])
+                .eq("id", value: postId.uuidString)
+                .execute()
+
+            print("✅ [いいね数非表示更新] 成功")
+        } catch {
+            print("🔴 [いいね数非表示更新] エラー: \(error)")
             throw error
         }
     }

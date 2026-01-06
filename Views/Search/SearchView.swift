@@ -105,7 +105,7 @@ struct SearchView: View {
         isLoadingTrends = true
         
         do {
-            async let nodesTask = PostService.shared.fetchPopularNodes(limit: 8)
+            async let nodesTask = PostService.shared.fetchPopularThemes(limit: 8)
             async let usersTask = UserService.shared.fetchRecommendedUsers(
                 currentUserId: authService.currentUser?.id,
                 limit: 5

@@ -75,7 +75,7 @@ struct EmptyStateView: View {
     }
 }
 
-// MARK: - Avatar View
+// MARK: - Avatar View (URLベース - 互換性のため残す)
 struct AvatarView: View {
     let url: String?
     let size: CGFloat
@@ -97,5 +97,69 @@ struct AvatarView: View {
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
+    }
+}
+
+// MARK: - Section Header
+struct SectionHeader: View {
+    let title: String
+    var action: (() -> Void)?
+    var actionTitle: String?
+    
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.headline)
+            Spacer()
+            if let action = action, let title = actionTitle {
+                Button(title, action: action)
+                    .font(.subheadline)
+                    .foregroundColor(.purple)
+            }
+        }
+    }
+}
+
+// MARK: - Reason Display Popup (接続理由表示)
+struct ReasonDisplayPopup: View {
+    let reason: String
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture { onDismiss() }
+            
+            VStack(spacing: 16) {
+                Text("なぜつながる？")
+                    .font(.headline)
+                Text(reason)
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                Button("閉じる") { onDismiss() }
+                    .foregroundColor(.purple)
+            }
+            .padding(24)
+            .background(Color(.systemBackground))
+            .cornerRadius(16)
+            .shadow(radius: 20)
+            .padding(40)
+        }
+    }
+}
+
+// MARK: - 共通エディターセクション
+struct EditorSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.secondary)
+            content
+        }
     }
 }

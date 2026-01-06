@@ -1,6 +1,7 @@
 // Models/Node.swift
 
 import Foundation
+import SwiftUI
 
 struct Node: Identifiable, Codable {
     let id: UUID
@@ -11,7 +12,8 @@ struct Node: Identifiable, Codable {
     let isCenter: Bool
     let createdAt: Date
     var note: String?
-    var style: String?  // JSONスタイル文字列
+    var style: String?
+    var edition: Int  // 追加: 第何回目の編集で追加されたか
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -23,6 +25,7 @@ struct Node: Identifiable, Codable {
         case createdAt = "created_at"
         case note
         case style
+        case edition
     }
     
     init(from decoder: Decoder) throws {
@@ -42,6 +45,7 @@ struct Node: Identifiable, Codable {
         
         note = try container.decodeIfPresent(String.self, forKey: .note)
         style = try container.decodeIfPresent(String.self, forKey: .style)
+        edition = try container.decodeIfPresent(Int.self, forKey: .edition) ?? 1
     }
     
     func encode(to encoder: Encoder) throws {
@@ -54,6 +58,7 @@ struct Node: Identifiable, Codable {
         try container.encode(isCenter, forKey: .isCenter)
         try container.encodeIfPresent(note, forKey: .note)
         try container.encodeIfPresent(style, forKey: .style)
+        try container.encode(edition, forKey: .edition)
     }
     
     init(
@@ -65,7 +70,8 @@ struct Node: Identifiable, Codable {
         isCenter: Bool = false,
         createdAt: Date = Date(),
         note: String? = nil,
-        style: String? = nil
+        style: String? = nil,
+        edition: Int = 1
     ) {
         self.id = id
         self.postId = postId
@@ -76,5 +82,13 @@ struct Node: Identifiable, Codable {
         self.createdAt = createdAt
         self.note = note
         self.style = style
+        self.edition = edition
+    }
+    
+    /// このノードの縁色を取得
+    var borderColor: Color {
+        EditionColors.color(for: edition)
     }
 }
+
+

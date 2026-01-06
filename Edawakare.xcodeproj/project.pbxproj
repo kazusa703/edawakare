@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AC1664712F0CB00000E076C4 /* CommentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1664702F0CB00000E076C4 /* CommentService.swift */; };
+		AC16645F2F0B7A53008993BB /* DraftService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC16645E2F0B7A53008993BB /* DraftService.swift */; };
+		AC1664612F0B82B3008993BB /* Editioncolors.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1664602F0B82B3008993BB /* Editioncolors.swift */; };
+		AC1664632F0BE483008993BB /* DisplayPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1664622F0BE483008993BB /* DisplayPreviewView.swift */; };
+		AC1664682F0CA21C008993BB /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = AC1664672F0CA21C008993BB /* FirebaseMessaging */; };
+		AC16646B2F0CA3AE008993BB /* PushNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC16646A2F0CA3AE008993BB /* PushNotificationService.swift */; };
 		ACD313082F03A4D300E076C4 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = ACD313072F03A4D300E076C4 /* Auth */; };
 		ACD3130A2F03A4D300E076C4 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = ACD313092F03A4D300E076C4 /* Functions */; };
 		ACD3130C2F03A4D300E076C4 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = ACD3130B2F03A4D300E076C4 /* PostgREST */; };
@@ -38,15 +44,12 @@
 		ACD314A02F08C30A00E076C4 /* CreatePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3148E2F08C30A00E076C4 /* CreatePostView.swift */; };
 		ACD314A12F08C30A00E076C4 /* FollowListType.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314872F08C30A00E076C4 /* FollowListType.swift */; };
 		ACD314A22F08C30A00E076C4 /* HomeFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314822F08C30A00E076C4 /* HomeFeedView.swift */; };
-		ACD314A32F08C30A00E076C4 /* PasswordResetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147B2F08C30A00E076C4 /* PasswordResetView.swift */; };
 		ACD314A42F08C30A00E076C4 /* CommonComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147E2F08C30A00E076C4 /* CommonComponents.swift */; };
 		ACD314A52F08C30A00E076C4 /* DMViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314802F08C30A00E076C4 /* DMViews.swift */; };
-		ACD314A62F08C30A00E076C4 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147A2F08C30A00E076C4 /* LoginView.swift */; };
 		ACD314A82F08C30A00E076C4 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314932F08C30A00E076C4 /* SearchView.swift */; };
 		ACD314A92F08C30A00E076C4 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314912F08C30A00E076C4 /* PostDetailView.swift */; };
 		ACD314AA2F08C30A00E076C4 /* MyPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3148B2F08C30A00E076C4 /* MyPageView.swift */; };
 		ACD314AB2F08C30A00E076C4 /* CommentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3148D2F08C30A00E076C4 /* CommentsView.swift */; };
-		ACD314AC2F08C30A00E076C4 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD3147C2F08C30A00E076C4 /* SignUpView.swift */; };
 		ACD314B02F09216500E076C4 /* NotificationSettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314AF2F09216500E076C4 /* NotificationSettingsManager.swift */; };
 		ACD314B22F09E7F200E076C4 /* ImageSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314B12F09E7F200E076C4 /* ImageSaver.swift */; };
 		ACD314B42F09F17400E076C4 /* DraftPost.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314B32F09F17400E076C4 /* DraftPost.swift */; };
@@ -64,9 +67,19 @@
 		ACD314D22F0A51C200E076C4 /* UnifyStyleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314D12F0A51C200E076C4 /* UnifyStyleView.swift */; };
 		ACD314DA2F0A973C00E076C4 /* FavoriteStyleEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314D92F0A973C00E076C4 /* FavoriteStyleEditorView.swift */; };
 		ACD314DC2F0A975B00E076C4 /* StyleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314DB2F0A975B00E076C4 /* StyleManager.swift */; };
+		ACD314E22F0B67FE00E076C4 /* TimeFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314E12F0B67FE00E076C4 /* TimeFormatter.swift */; };
+		ACD314E42F0B686C00E076C4 /* SharedColorPickerRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314E32F0B686C00E076C4 /* SharedColorPickerRow.swift */; };
+		ACD314E62F0B689000E076C4 /* ProfileAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314E52F0B689000E076C4 /* ProfileAvatarView.swift */; };
+		ACD314E82F0B68AA00E076C4 /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314E72F0B68AA00E076C4 /* PrimaryButton.swift */; };
+		ACD314EA2F0B690100E076C4 /* AuthViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD314E92F0B690100E076C4 /* AuthViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		AC1664702F0CB00000E076C4 /* CommentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentService.swift; sourceTree = "<group>"; };
+		AC16645E2F0B7A53008993BB /* DraftService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftService.swift; sourceTree = "<group>"; };
+		AC1664602F0B82B3008993BB /* Editioncolors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Editioncolors.swift; sourceTree = "<group>"; };
+		AC1664622F0BE483008993BB /* DisplayPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayPreviewView.swift; sourceTree = "<group>"; };
+		AC16646A2F0CA3AE008993BB /* PushNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotificationService.swift; sourceTree = "<group>"; };
 		ACD312F82F03A4A800E076C4 /* Edawakare.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Edawakare.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACD313892F045BAD00E076C4 /* EdawakareApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdawakareApp.swift; sourceTree = "<group>"; };
 		ACD3138C2F045BC400E076C4 /* Node.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Node.swift; sourceTree = "<group>"; };
@@ -83,9 +96,6 @@
 		ACD313DB2F04625D00E076C4 /* SupabaseClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClient.swift; sourceTree = "<group>"; };
 		ACD313FF2F04C42600E076C4 /* FeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedViewModel.swift; sourceTree = "<group>"; };
 		ACD314412F08BEEA00E076C4 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
-		ACD3147A2F08C30A00E076C4 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
-		ACD3147B2F08C30A00E076C4 /* PasswordResetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordResetView.swift; sourceTree = "<group>"; };
-		ACD3147C2F08C30A00E076C4 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
 		ACD3147E2F08C30A00E076C4 /* CommonComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommonComponents.swift; sourceTree = "<group>"; };
 		ACD314802F08C30A00E076C4 /* DMViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DMViews.swift; sourceTree = "<group>"; };
 		ACD314822F08C30A00E076C4 /* HomeFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeedView.swift; sourceTree = "<group>"; };
@@ -119,6 +129,11 @@
 		ACD314D12F0A51C200E076C4 /* UnifyStyleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifyStyleView.swift; sourceTree = "<group>"; };
 		ACD314D92F0A973C00E076C4 /* FavoriteStyleEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteStyleEditorView.swift; sourceTree = "<group>"; };
 		ACD314DB2F0A975B00E076C4 /* StyleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyleManager.swift; sourceTree = "<group>"; };
+		ACD314E12F0B67FE00E076C4 /* TimeFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeFormatter.swift; sourceTree = "<group>"; };
+		ACD314E32F0B686C00E076C4 /* SharedColorPickerRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedColorPickerRow.swift; sourceTree = "<group>"; };
+		ACD314E52F0B689000E076C4 /* ProfileAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileAvatarView.swift; sourceTree = "<group>"; };
+		ACD314E72F0B68AA00E076C4 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
+		ACD314E92F0B690100E076C4 /* AuthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -149,6 +164,7 @@
 			files = (
 				ACD3130C2F03A4D300E076C4 /* PostgREST in Frameworks */,
 				ACD3130A2F03A4D300E076C4 /* Functions in Frameworks */,
+				AC1664682F0CA21C008993BB /* FirebaseMessaging in Frameworks */,
 				ACD313122F03A4D300E076C4 /* Supabase in Frameworks */,
 				ACD313082F03A4D300E076C4 /* Auth in Frameworks */,
 				ACD313102F03A4D300E076C4 /* Storage in Frameworks */,
@@ -207,6 +223,7 @@
 			isa = PBXGroup;
 			children = (
 				ACD313D72F0461EF00E076C4 /* Authservice.swift */,
+				AC1664702F0CB00000E076C4 /* CommentService.swift */,
 				ACD313D52F0461E800E076C4 /* InteractionService.swift */,
 				ACD313CF2F0461C900E076C4 /* Userblockreportservice.swift */,
 				ACD313D12F0461D500E076C4 /* PostService.swift */,
@@ -215,6 +232,8 @@
 				ACD314AF2F09216500E076C4 /* NotificationSettingsManager.swift */,
 				ACD314B52F09F18600E076C4 /* DraftManager.swift */,
 				ACD314DB2F0A975B00E076C4 /* StyleManager.swift */,
+				AC16645E2F0B7A53008993BB /* DraftService.swift */,
+				AC16646A2F0CA3AE008993BB /* PushNotificationService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -226,6 +245,7 @@
 				ACD314B12F09E7F200E076C4 /* ImageSaver.swift */,
 				ACD314B92F09F7D000E076C4 /* HapticManager.swift */,
 				ACD314BB2F09F7E400E076C4 /* SkeletonView.swift */,
+				AC1664602F0B82B3008993BB /* Editioncolors.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -241,9 +261,7 @@
 		ACD3147D2F08C30A00E076C4 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
-				ACD3147A2F08C30A00E076C4 /* LoginView.swift */,
-				ACD3147B2F08C30A00E076C4 /* PasswordResetView.swift */,
-				ACD3147C2F08C30A00E076C4 /* SignUpView.swift */,
+				ACD314E92F0B690100E076C4 /* AuthViews.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -258,6 +276,10 @@
 				ACD314C32F0A26B800E076C4 /* ConnectionStyleEditor.swift */,
 				ACD314C52F0A26CE00E076C4 /* PostPreviewView.swift */,
 				ACD314D12F0A51C200E076C4 /* UnifyStyleView.swift */,
+				ACD314E12F0B67FE00E076C4 /* TimeFormatter.swift */,
+				ACD314E32F0B686C00E076C4 /* SharedColorPickerRow.swift */,
+				ACD314E52F0B689000E076C4 /* ProfileAvatarView.swift */,
+				ACD314E72F0B68AA00E076C4 /* PrimaryButton.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -314,6 +336,7 @@
 			children = (
 				ACD3148D2F08C30A00E076C4 /* CommentsView.swift */,
 				ACD3148E2F08C30A00E076C4 /* CreatePostView.swift */,
+				AC1664622F0BE483008993BB /* DisplayPreviewView.swift */,
 				ACD3148F2F08C30A00E076C4 /* EditPostView.swift */,
 				ACD314902F08C30A00E076C4 /* MindMapView.swift */,
 				ACD314912F08C30A00E076C4 /* PostDetailView.swift */,
@@ -380,6 +403,7 @@
 				ACD3130D2F03A4D300E076C4 /* Realtime */,
 				ACD3130F2F03A4D300E076C4 /* Storage */,
 				ACD313112F03A4D300E076C4 /* Supabase */,
+				AC1664672F0CA21C008993BB /* FirebaseMessaging */,
 			);
 			productName = Edawakare;
 			productReference = ACD312F82F03A4A800E076C4 /* Edawakare.app */;
@@ -411,6 +435,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				ACD313062F03A4D300E076C4 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				AC1664662F0CA21C008993BB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = ACD312F92F03A4A800E076C4 /* Products */;
@@ -437,10 +462,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AC1664712F0CB00000E076C4 /* CommentService.swift in Sources */,
 				ACD313D02F0461C900E076C4 /* Userblockreportservice.swift in Sources */,
+				ACD314E62F0B689000E076C4 /* ProfileAvatarView.swift in Sources */,
 				ACD314B02F09216500E076C4 /* NotificationSettingsManager.swift in Sources */,
 				ACD314DC2F0A975B00E076C4 /* StyleManager.swift in Sources */,
 				ACD313952F045BC400E076C4 /* Post.swift in Sources */,
+				AC1664612F0B82B3008993BB /* Editioncolors.swift in Sources */,
 				ACD313DC2F04625D00E076C4 /* SupabaseClient.swift in Sources */,
 				ACD314BE2F09F7F600E076C4 /* AnimatedButtons.swift in Sources */,
 				ACD314002F04C42600E076C4 /* FeedViewModel.swift in Sources */,
@@ -448,13 +476,16 @@
 				ACD313D82F0461EF00E076C4 /* Authservice.swift in Sources */,
 				ACD313962F045BC400E076C4 /* Node.swift in Sources */,
 				ACD3139E2F045BCF00E076C4 /* MockData.swift in Sources */,
+				ACD314E82F0B68AA00E076C4 /* PrimaryButton.swift in Sources */,
 				ACD314422F08BEEA00E076C4 /* Constants.swift in Sources */,
 				ACD313D22F0461D500E076C4 /* PostService.swift in Sources */,
 				ACD313D42F0461DD00E076C4 /* NotificationMessageService.swift in Sources */,
 				ACD313972F045BC400E076C4 /* OtherModels.swift in Sources */,
+				AC16645F2F0B7A53008993BB /* DraftService.swift in Sources */,
 				ACD314992F08C30A00E076C4 /* DeepLinkPostView.swift in Sources */,
 				ACD3149A2F08C30A00E076C4 /* SettingsView.swift in Sources */,
 				ACD3149B2F08C30A00E076C4 /* MainTabView.swift in Sources */,
+				ACD314E42F0B686C00E076C4 /* SharedColorPickerRow.swift in Sources */,
 				ACD314C02F0A267E00E076C4 /* NodeStyle.swift in Sources */,
 				ACD314B82F09F1F300E076C4 /* EditDraftView.swift in Sources */,
 				ACD3149C2F08C30A00E076C4 /* MyPostDetailView.swift in Sources */,
@@ -468,25 +499,26 @@
 				ACD314A02F08C30A00E076C4 /* CreatePostView.swift in Sources */,
 				ACD314A12F08C30A00E076C4 /* FollowListType.swift in Sources */,
 				ACD314A22F08C30A00E076C4 /* HomeFeedView.swift in Sources */,
+				ACD314EA2F0B690100E076C4 /* AuthViews.swift in Sources */,
 				ACD314C22F0A269F00E076C4 /* NodeStyleEditor.swift in Sources */,
 				ACD314C42F0A26B800E076C4 /* ConnectionStyleEditor.swift in Sources */,
-				ACD314A32F08C30A00E076C4 /* PasswordResetView.swift in Sources */,
+				ACD314E22F0B67FE00E076C4 /* TimeFormatter.swift in Sources */,
 				ACD314A42F08C30A00E076C4 /* CommonComponents.swift in Sources */,
 				ACD314A52F08C30A00E076C4 /* DMViews.swift in Sources */,
-				ACD314A62F08C30A00E076C4 /* LoginView.swift in Sources */,
 				ACD314BC2F09F7E400E076C4 /* SkeletonView.swift in Sources */,
 				ACD314B22F09E7F200E076C4 /* ImageSaver.swift in Sources */,
 				ACD314B62F09F18600E076C4 /* DraftManager.swift in Sources */,
 				ACD314A82F08C30A00E076C4 /* SearchView.swift in Sources */,
 				ACD314A92F08C30A00E076C4 /* PostDetailView.swift in Sources */,
 				ACD314AA2F08C30A00E076C4 /* MyPageView.swift in Sources */,
+				AC16646B2F0CA3AE008993BB /* PushNotificationService.swift in Sources */,
 				ACD314AB2F08C30A00E076C4 /* CommentsView.swift in Sources */,
-				ACD314AC2F08C30A00E076C4 /* SignUpView.swift in Sources */,
 				ACD314CE2F0A431500E076C4 /* UserProfileView.swift in Sources */,
 				ACD313982F045BC400E076C4 /* User.swift in Sources */,
 				ACD313992F045BC400E076C4 /* NodeConnection.swift in Sources */,
 				ACD314D02F0A4A0700E076C4 /* Mindmapdisplayview.swift in Sources */,
 				ACD314BA2F09F7D000E076C4 /* HapticManager.swift in Sources */,
+				AC1664632F0BE483008993BB /* DisplayPreviewView.swift in Sources */,
 				ACD3138B2F045BAD00E076C4 /* EdawakareApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -620,6 +652,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Edawakare/Edawakare.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WM7939G226;
@@ -640,6 +673,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.imai.Edawakare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -654,6 +690,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Edawakare/Edawakare.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WM7939G226;
@@ -674,6 +711,9 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.imai.Edawakare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -707,6 +747,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		AC1664662F0CA21C008993BB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.7.0;
+			};
+		};
 		ACD313062F03A4D300E076C4 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";
@@ -718,6 +766,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		AC1664672F0CA21C008993BB /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AC1664662F0CA21C008993BB /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
 		ACD313072F03A4D300E076C4 /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = ACD313062F03A4D300E076C4 /* XCRemoteSwiftPackageReference "supabase-swift" */;

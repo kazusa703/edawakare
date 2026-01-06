@@ -41,7 +41,13 @@ struct EditDraftView: View {
     @State private var showDeleteConfirm = false
     @State private var showDeleteFinalConfirm = false
     @State private var showPostConfirm = false
-    
+
+    // フィード表示設定
+    @State private var showDisplayPreview = false
+    @State private var pendingDisplayScale: Double = 1.0
+    @State private var pendingDisplayOffsetX: Double = 0
+    @State private var pendingDisplayOffsetY: Double = 0
+
     private var canPost: Bool {
         !centerNodeText.trimmingCharacters(in: .whitespaces).isEmpty && nodes.count >= 2
     }
@@ -244,11 +250,28 @@ struct EditDraftView: View {
             }
             .alert("投稿確認", isPresented: $showPostConfirm) {
                 Button("キャンセル", role: .cancel) {}
-                Button("投稿") {
-                    postToSupabase()
+                Button("次へ") {
+                    showDisplayPreview = true
                 }
             } message: {
-                Text("投稿を確定してよろしいですか？")
+                Text("フィード表示設定に進みますか？")
+            }
+            .fullScreenCover(isPresented: $showDisplayPreview) {
+                DisplayPreviewView(
+                    centerNodeText: centerNodeText,
+                    nodes: nodes,
+                    connections: connections,
+                    onConfirm: { scale, offsetX, offsetY in
+                        pendingDisplayScale = scale
+                        pendingDisplayOffsetX = offsetX
+                        pendingDisplayOffsetY = offsetY
+                        showDisplayPreview = false
+                        postToSupabase()
+                    },
+                    onCancel: {
+                        showDisplayPreview = false
+                    }
+                )
             }
             .overlay {
                 if showReasonPopup {
@@ -390,43 +413,96 @@ struct EditDraftView: View {
     
     private func addNodeToCenter() {
         saveHistory()
-        
-        guard let centerNode = nodes.first(where: { $0.isCenter }) else { return }
-        
-        let existingChildren = connections.filter { $0.fromNodeId == centerNode.id }.count
-        let angles: [Double] = [-Double.pi / 2, -Double.pi / 6, Double.pi / 6, Double.pi * 5 / 6, -Double.pi * 5 / 6]
-        let angleIndex = existingChildren % angles.count
-        let ring = existingChildren / angles.count
-        let angle = angles[angleIndex]
-        
-        let baseDistance: Double = 160
-        let distance = baseDistance + Double(ring) * 100
-        let newX = centerNode.positionX + cos(angle) * distance
-        let newY = centerNode.positionY + sin(angle) * distance
-        
-        let newNode = StyledNode(
-            id: UUID(),
-            text: "",
-            positionX: newX,
-            positionY: newY,
-            isCenter: false,
-            parentId: centerNode.id,
-            style: .defaultChild,
-            detail: ""
-        )
-        
-        let newConnection = StyledConnection(
-            id: UUID(),
-            fromNodeId: centerNode.id,
-            toNodeId: newNode.id,
-            reason: "",
-            style: .defaultStyle
-        )
-        
-        nodes.append(newNode)
-        connections.append(newConnection)
-        selectedNodeId = newNode.id
-        
+
+        // 選択中のノードがあればそこから、なければ中心ノードから追加
+        let parentNode: StyledNode?
+        if let selectedId = selectedNodeId,
+           let selected = nodes.first(where: { $0.id == selectedId }) {
+            parentNode = selected
+        } else {
+            parentNode = nodes.first(where: { $0.isCenter })
+        }
+
+        guard let parent = parentNode else { return }
+
+        let existingChildren = connections.filter { $0.fromNodeId == parent.id }.count
+
+        // 親ノードからの相対位置を計算
+        let baseAngle: Double
+        if parent.isCenter {
+            // 中心ノードからの場合は放射状に配置
+            let angles: [Double] = [-Double.pi / 2, -Double.pi / 6, Double.pi / 6, Double.pi * 5 / 6, -Double.pi * 5 / 6]
+            let angleIndex = existingChildren % angles.count
+            let ring = existingChildren / angles.count
+            baseAngle = angles[angleIndex]
+            let baseDistance: Double = 160
+            let distance = baseDistance + Double(ring) * 100
+            let newX = parent.positionX + cos(baseAngle) * distance
+            let newY = parent.positionY + sin(baseAngle) * distance
+
+            let newNode = StyledNode(
+                id: UUID(),
+                text: "",
+                positionX: newX,
+                positionY: newY,
+                isCenter: false,
+                parentId: parent.id,
+                style: .defaultChild,
+                detail: ""
+            )
+
+            let newConnection = StyledConnection(
+                id: UUID(),
+                fromNodeId: parent.id,
+                toNodeId: newNode.id,
+                reason: "",
+                style: .defaultStyle
+            )
+
+            nodes.append(newNode)
+            connections.append(newConnection)
+            selectedNodeId = newNode.id
+        } else {
+            // 子ノードからの場合は親からの方向を継続
+            if let parentConnection = connections.first(where: { $0.toNodeId == parent.id }),
+               let grandParent = nodes.first(where: { $0.id == parentConnection.fromNodeId }) {
+                baseAngle = atan2(parent.positionY - grandParent.positionY, parent.positionX - grandParent.positionX)
+            } else {
+                baseAngle = 0
+            }
+
+            let spreadAngle: Double = .pi / 4
+            let angleOffset = Double(existingChildren) * spreadAngle - Double(existingChildren) * spreadAngle / 2
+            let angle = baseAngle + angleOffset
+            let distance: Double = 120
+
+            let newX = parent.positionX + cos(angle) * distance
+            let newY = parent.positionY + sin(angle) * distance
+
+            let newNode = StyledNode(
+                id: UUID(),
+                text: "",
+                positionX: newX,
+                positionY: newY,
+                isCenter: false,
+                parentId: parent.id,
+                style: .defaultChild,
+                detail: ""
+            )
+
+            let newConnection = StyledConnection(
+                id: UUID(),
+                fromNodeId: parent.id,
+                toNodeId: newNode.id,
+                reason: "",
+                style: .defaultStyle
+            )
+
+            nodes.append(newNode)
+            connections.append(newConnection)
+            selectedNodeId = newNode.id
+        }
+
         HapticManager.shared.lightImpact()
     }
     
@@ -543,7 +619,10 @@ struct EditDraftView: View {
                     userId: userId,
                     centerNodeText: centerNodeText,
                     nodes: nodeInputs,
-                    connections: connectionInputs
+                    connections: connectionInputs,
+                    displayScale: pendingDisplayScale,
+                    displayOffsetX: pendingDisplayOffsetX,
+                    displayOffsetY: pendingDisplayOffsetY
                 )
                 
                 await MainActor.run {

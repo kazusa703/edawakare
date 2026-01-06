@@ -21,7 +21,8 @@ struct MyPostDetailView: View {
     @State private var showSaveSuccess = false
     @State private var showSaveError = false
     @State private var saveErrorMessage = ""
-    
+    @State private var showDisplaySettings = false
+
     // フローティングメニュー用
     @State private var menuPosition: CGPoint = CGPoint(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2)
     @State private var isMenuMinimized = false
@@ -78,7 +79,9 @@ struct MyPostDetailView: View {
                         onCopyLink: { copyLink() },
                         onPrivacySettings: { showPrivacySettings = true },
                         onCommentSettings: { showCommentSettings = true },
-                        onSaveImage: { saveImage() }  // 追加
+                        onSaveImage: { saveImage() },
+                        onDisplaySettings: { showDisplaySettings = true },
+                        onHideLikeCountToggle: { toggleHideLikeCount() }
                     )
                 }
                 
@@ -169,6 +172,18 @@ struct MyPostDetailView: View {
                 }
             )
         }
+        .fullScreenCover(isPresented: $showDisplaySettings) {
+            DisplaySettingsView(
+                post: post,
+                onConfirm: { scale, offsetX, offsetY in
+                    updateDisplaySettings(scale: scale, offsetX: offsetX, offsetY: offsetY)
+                    showDisplaySettings = false
+                },
+                onCancel: {
+                    showDisplaySettings = false
+                }
+            )
+        }
     }
     
     // MARK: - Actions
@@ -184,7 +199,19 @@ struct MyPostDetailView: View {
             }
         }
     }
-    
+
+    private func toggleHideLikeCount() {
+        Task {
+            do {
+                try await PostService.shared.updateHideLikeCount(postId: post.id, hideLikeCount: !post.hideLikeCount)
+                post.hideLikeCount.toggle()
+                await onUpdate()
+            } catch {
+                print("🔴 [MyPostDetail] いいね数非表示変更エラー: \(error)")
+            }
+        }
+    }
+
     private func deletePost() {
         Task {
             do {
@@ -217,10 +244,30 @@ struct MyPostDetailView: View {
             }
         }
     }
-    
+
+    private func updateDisplaySettings(scale: Double, offsetX: Double, offsetY: Double) {
+        Task {
+            do {
+                try await PostService.shared.updateDisplaySettings(
+                    postId: post.id,
+                    scale: scale,
+                    offsetX: offsetX,
+                    offsetY: offsetY
+                )
+                post.displayScale = scale
+                post.displayOffsetX = offsetX
+                post.displayOffsetY = offsetY
+                await onUpdate()
+                HapticManager.shared.success()
+            } catch {
+                print("🔴 [MyPostDetail] 表示設定変更エラー: \(error)")
+            }
+        }
+    }
+
     private func refreshPost() async {
         do {
-            post = try await PostService.shared.fetchPost(postId: post.id)
+            post = try await PostService.shared.fetchPostDetail(postId: post.id)
         } catch {
             print("🔴 [MyPostDetail] 投稿更新エラー: \(error)")
         }
@@ -257,7 +304,7 @@ struct FloatingMenuView: View {
     @Binding var minimizedEdge: Edge
     @Binding var position: CGPoint
     let geometry: GeometryProxy
-    
+
     var onClose: () -> Void
     var onDelete: () -> Void
     var onTogglePin: () -> Void
@@ -266,8 +313,10 @@ struct FloatingMenuView: View {
     var onCopyLink: () -> Void
     var onPrivacySettings: () -> Void
     var onCommentSettings: () -> Void
-    var onSaveImage: () -> Void  // 追加
-    
+    var onSaveImage: () -> Void
+    var onDisplaySettings: () -> Void
+    var onHideLikeCountToggle: () -> Void
+
     @State private var dragOffset: CGSize = .zero
     @State private var velocity: CGSize = .zero
     @State private var lastDragValue: DragGesture.Value?
@@ -299,7 +348,9 @@ struct FloatingMenuView: View {
                     onCopyLink: onCopyLink,
                     onPrivacySettings: onPrivacySettings,
                     onCommentSettings: onCommentSettings,
-                    onSaveImage: onSaveImage  // 追加
+                    onSaveImage: onSaveImage,
+                    onDisplaySettings: onDisplaySettings,
+                    onHideLikeCountToggle: onHideLikeCountToggle
                 )
                 .position(
                     x: position.x + dragOffset.width,
@@ -385,8 +436,10 @@ struct ExpandedMenuView: View {
     var onCopyLink: () -> Void
     var onPrivacySettings: () -> Void
     var onCommentSettings: () -> Void
-    var onSaveImage: () -> Void  // 追加
-    
+    var onSaveImage: () -> Void
+    var onDisplaySettings: () -> Void
+    var onHideLikeCountToggle: () -> Void
+
     var body: some View {
         VStack(spacing: 0) {
             RoundedRectangle(cornerRadius: 2.5)
@@ -453,9 +506,28 @@ struct ExpandedMenuView: View {
                     onCommentSettings()
                     onClose()
                 }
-                
+
                 Divider().padding(.horizontal)
-                
+
+                MenuItemRow(
+                    icon: post.hideLikeCount ? "eye.slash.fill" : "eye.fill",
+                    title: "いいね数表示",
+                    subtitle: post.hideLikeCount ? "非表示" : "表示",
+                    iconColor: .pink
+                ) {
+                    onHideLikeCountToggle()
+                    onClose()
+                }
+
+                Divider().padding(.horizontal)
+
+                MenuItemRow(icon: "rectangle.on.rectangle", title: "フィード表示設定", iconColor: .purple) {
+                    onDisplaySettings()
+                    onClose()
+                }
+
+                Divider().padding(.horizontal)
+
                 MenuItemRow(icon: "trash.fill", title: "削除", iconColor: .red, isDestructive: true) {
                     onDelete()
                     onClose()
@@ -619,7 +691,7 @@ struct MyPostPrivacySettingsSheet: View {
             do {
                 let newVisibility = isPublic ? "public" : "followers_only"
                 try await PostService.shared.updatePost(postId: post.id, visibility: newVisibility)
-                try await PostService.shared.updateAllowSave(postId: post.id, allowSave: allowSave)
+                try await PostService.shared.updatePost(postId: post.id, allowSave: allowSave)
                 
                 await MainActor.run {
                     post.visibility = newVisibility

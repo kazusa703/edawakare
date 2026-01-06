@@ -26,6 +26,11 @@ struct EditPostView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     
+    // 次のEdition（新規ノードに適用）
+    var nextEdition: Int {
+        post.currentEdition + 1
+    }
+    
     enum EditMode: String, CaseIterable {
         case text = "テキスト"
         case visual = "ビジュアル"
@@ -40,6 +45,23 @@ struct EditPostView: View {
         NavigationStack {
             ZStack {
                 VStack(spacing: 0) {
+                    // Edition情報バー
+                    HStack {
+                        Circle()
+                            .fill(EditionColors.color(for: nextEdition))
+                            .frame(width: 12, height: 12)
+                        Text("第\(nextEdition)回の編集")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text("追加するノードは この色の縁になります")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color(.secondarySystemBackground))
+                    
                     Picker("編集モード", selection: $editMode) {
                         ForEach(EditMode.allCases, id: \.self) { mode in
                             Text(mode.rawValue).tag(mode)
@@ -65,7 +87,8 @@ struct EditPostView: View {
                             nodes: $nodes,
                             connections: $connections,
                             existingNodeIds: existingNodeIds,
-                            existingConnectionIds: existingConnectionIds
+                            existingConnectionIds: existingConnectionIds,
+                            nextEdition: nextEdition
                         )
                     } else {
                         EditVisualModeView(
@@ -75,6 +98,7 @@ struct EditPostView: View {
                             existingNodeIds: existingNodeIds,
                             selectedNodeId: $selectedNodeId,
                             selectedConnectionId: $selectedConnectionId,
+                            nextEdition: nextEdition,
                             onShowReason: { reason in
                                 popupReason = reason
                                 showReasonPopup = true
@@ -158,7 +182,8 @@ struct EditPostView: View {
                     positionX: node.positionX,
                     positionY: node.positionY,
                     isCenter: node.isCenter,
-                    parentId: nil
+                    parentId: nil,
+                    edition: node.edition
                 )
                 nodes.append(editableNode)
                 existingNodeIds.insert(node.id)
@@ -198,7 +223,8 @@ struct EditPostView: View {
             positionX: newX,
             positionY: newY,
             isCenter: false,
-            parentId: parentId
+            parentId: parentId,
+            edition: nextEdition  // 次のEditionを設定
         )
         
         let newConnection = EditableConnection(
@@ -254,14 +280,11 @@ struct EditPostView: View {
     private func deleteSelected() {
         if let nodeId = selectedNodeId {
             if existingNodeIds.contains(nodeId) { return }
-            
             if let node = nodes.first(where: { $0.id == nodeId }), node.isCenter { return }
-            
             deleteNodeAndDescendants(nodeId: nodeId)
             selectedNodeId = nil
         } else if let connectionId = selectedConnectionId {
             if existingConnectionIds.contains(connectionId) { return }
-            
             if let connection = connections.first(where: { $0.id == connectionId }) {
                 deleteNodeAndDescendants(nodeId: connection.toNodeId)
             }
@@ -294,17 +317,20 @@ struct EditPostView: View {
                     nodeIdMap[nodeId] = nodeId
                 }
                 
+                // 新規ノードを追加（edition付き）
                 for node in newNodes {
                     let createdNode = try await PostService.shared.addNode(
                         postId: post.id,
                         text: node.text,
                         positionX: node.positionX,
                         positionY: node.positionY,
-                        isCenter: false
+                        isCenter: false,
+                        edition: nextEdition  // 次のEditionを設定
                     )
                     nodeIdMap[node.id] = createdNode.id
                 }
                 
+                // コネクションを追加
                 for conn in newConnections {
                     guard let fromId = nodeIdMap[conn.fromNodeId],
                           let toId = nodeIdMap[conn.toNodeId] else { continue }
@@ -315,6 +341,11 @@ struct EditPostView: View {
                         toNodeId: toId,
                         reason: conn.reason.isEmpty ? nil : conn.reason
                     )
+                }
+                
+                // Edition をインクリメント
+                if !newNodes.isEmpty {
+                    try await PostService.shared.incrementEdition(postId: post.id)
                 }
                 
                 await MainActor.run {
@@ -393,12 +424,14 @@ struct EditTextModeView: View {
     @Binding var connections: [EditableConnection]
     let existingNodeIds: Set<UUID>
     let existingConnectionIds: Set<UUID>
+    let nextEdition: Int
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 EditCenterNodeRow(
                     text: centerNodeText,
+                    edition: nodes.first(where: { $0.isCenter })?.edition ?? 1,
                     onAddChild: { addChildToCenter() }
                 )
                 
@@ -410,6 +443,7 @@ struct EditTextModeView: View {
                         connections: $connections,
                         existingNodeIds: existingNodeIds,
                         existingConnectionIds: existingConnectionIds,
+                        nextEdition: nextEdition,
                         level: 1
                     )
                 }
@@ -432,7 +466,8 @@ struct EditTextModeView: View {
             positionX: newX,
             positionY: newY,
             isCenter: false,
-            parentId: centerNode.id
+            parentId: centerNode.id,
+            edition: nextEdition
         )
         
         let newConnection = EditableConnection(
@@ -450,16 +485,19 @@ struct EditTextModeView: View {
 // MARK: - 中心ノード行（編集用）
 struct EditCenterNodeRow: View {
     let text: String
+    let edition: Int
     let onAddChild: () -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Circle()
-                    .fill(
-                        LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
+                    .fill(EditionColors.color(for: edition))
                     .frame(width: 16, height: 16)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 0.5)
+                    )
                 
                 Text(text)
                     .font(.headline)
@@ -493,6 +531,7 @@ struct EditChildNodesTree: View {
     @Binding var connections: [EditableConnection]
     let existingNodeIds: Set<UUID>
     let existingConnectionIds: Set<UUID>
+    let nextEdition: Int
     let level: Int
     
     var childConnections: [EditableConnection] {
@@ -528,6 +567,7 @@ struct EditChildNodesTree: View {
                     connections: $connections,
                     existingNodeIds: existingNodeIds,
                     existingConnectionIds: existingConnectionIds,
+                    nextEdition: nextEdition,
                     level: level + 1
                 )
             }
@@ -548,7 +588,8 @@ struct EditChildNodesTree: View {
             positionX: newX,
             positionY: newY,
             isCenter: false,
-            parentId: parentId
+            parentId: parentId,
+            edition: nextEdition
         )
         
         let newConnection = EditableConnection(
@@ -612,10 +653,14 @@ struct EditChildNodeRow: View {
                     }
                 }
                 
+                // Edition色を表示
                 Circle()
-                    .stroke(isExistingNode ? Color.purple : Color.green, lineWidth: 2)
-                    .background(Circle().fill(isExistingNode ? Color.clear : Color.green.opacity(0.1)))
+                    .fill(EditionColors.color(for: node.edition))
                     .frame(width: 14, height: 14)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 0.5)
+                    )
                 
                 if isExistingNode {
                     Text(node.text)
@@ -639,7 +684,7 @@ struct EditChildNodeRow: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.green)
+                        .background(EditionColors.color(for: node.edition))
                         .cornerRadius(4)
                 }
                 
@@ -695,6 +740,7 @@ struct EditVisualModeView: View {
     let existingNodeIds: Set<UUID>
     @Binding var selectedNodeId: UUID?
     @Binding var selectedConnectionId: UUID?
+    let nextEdition: Int
     var onShowReason: (String) -> Void
     
     @State private var scale: CGFloat = 1.0
@@ -778,7 +824,7 @@ struct EditVisualModeView: View {
     }
 }
 
-// MARK: - 編集モード用ノードView
+// MARK: - 編集モード用ノードView（Edition対応）
 struct EditModeNodeView: View {
     @Binding var node: EditableNode
     let centerNodeText: String
@@ -795,6 +841,11 @@ struct EditModeNodeView: View {
     
     var nodeSize: CGFloat {
         node.isCenter ? 100 : 80
+    }
+    
+    // Edition色を取得
+    var editionColor: Color {
+        EditionColors.color(for: node.edition)
     }
     
     var body: some View {
@@ -814,12 +865,10 @@ struct EditModeNodeView: View {
                 .frame(width: nodeSize, height: nodeSize)
                 .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
             
+            // Edition色の縁（中心ノード以外）
             if !node.isCenter {
                 Circle()
-                    .stroke(
-                        isExisting ? Color.purple.opacity(0.5) : Color.green,
-                        lineWidth: isExisting ? 2 : 3
-                    )
+                    .stroke(editionColor, lineWidth: 3)
                     .frame(width: nodeSize, height: nodeSize)
             }
             
@@ -832,6 +881,7 @@ struct EditModeNodeView: View {
                 .padding(8)
                 .frame(width: nodeSize - 16)
             
+            // 新規ノードバッジ
             if !isExisting && !node.isCenter {
                 VStack {
                     HStack {
@@ -842,7 +892,7 @@ struct EditModeNodeView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 2)
-                            .background(Color.green)
+                            .background(editionColor)
                             .cornerRadius(4)
                     }
                     Spacer()
@@ -850,6 +900,7 @@ struct EditModeNodeView: View {
                 .frame(width: nodeSize, height: nodeSize)
             }
             
+            // 既存ノードのロックバッジ
             if isExisting && !node.isCenter {
                 VStack {
                     HStack {
@@ -858,7 +909,7 @@ struct EditModeNodeView: View {
                             .font(.system(size: 10))
                             .foregroundColor(.white)
                             .padding(4)
-                            .background(Color.purple.opacity(0.8))
+                            .background(Color.gray.opacity(0.8))
                             .clipShape(Circle())
                     }
                     Spacer()
@@ -920,13 +971,15 @@ struct EditModeConnectionLine: View {
                 y: (adjustedFromPoint.y + adjustedToPoint.y) / 2
             )
             
+            let lineColor = isNewConnection ? EditionColors.color(for: toNode.edition) : Color.purple.opacity(0.5)
+            
             ZStack {
                 Path { path in
                     path.move(to: adjustedFromPoint)
                     path.addLine(to: adjustedToPoint)
                 }
                 .stroke(
-                    isSelected ? Color.pink : (isNewConnection ? Color.green : Color.purple.opacity(0.5)),
+                    isSelected ? Color.pink : lineColor,
                     style: StrokeStyle(lineWidth: isSelected ? 4 : 2, lineCap: .round)
                 )
                 
@@ -934,7 +987,7 @@ struct EditModeConnectionLine: View {
                     at: adjustedToPoint,
                     angle: angle,
                     size: 12,
-                    color: isSelected ? Color.pink : (isNewConnection ? Color.green : Color.purple.opacity(0.7))
+                    color: isSelected ? Color.pink : lineColor
                 )
                 
                 Path { path in
@@ -955,7 +1008,7 @@ struct EditModeConnectionLine: View {
                     Button(action: { onShowReason(connection.reason) }) {
                         ZStack {
                             Circle()
-                                .fill(isNewConnection ? Color.green : Color.purple)
+                                .fill(isNewConnection ? EditionColors.color(for: toNode.edition) : Color.purple)
                                 .frame(width: 24, height: 24)
                             
                             Image(systemName: "text.bubble.fill")
@@ -1092,7 +1145,7 @@ struct EditPostTextSheet: View {
     }
 }
 
-// MARK: - EditableNode と EditableConnection（このファイル専用）
+// MARK: - EditableNode と EditableConnection（Edition対応）
 struct EditableNode: Identifiable, Equatable {
     let id: UUID
     var text: String
@@ -1100,14 +1153,16 @@ struct EditableNode: Identifiable, Equatable {
     var positionY: Double
     var isCenter: Bool
     var parentId: UUID?
+    var edition: Int  // 追加
     
-    init(id: UUID = UUID(), text: String, positionX: Double, positionY: Double, isCenter: Bool, parentId: UUID? = nil) {
+    init(id: UUID = UUID(), text: String, positionX: Double, positionY: Double, isCenter: Bool, parentId: UUID? = nil, edition: Int = 1) {
         self.id = id
         self.text = text
         self.positionX = positionX
         self.positionY = positionY
         self.isCenter = isCenter
         self.parentId = parentId
+        self.edition = edition
     }
 }
 

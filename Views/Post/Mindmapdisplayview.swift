@@ -6,7 +6,8 @@ import SwiftUI
 struct MindMapDisplayView: View {
     let post: Post
     var onShowReason: ((String) -> Void)?
-    
+    var isFixedDisplay: Bool = false  // フィード用固定表示モード
+
     @State private var scale: CGFloat = 1.0
     @State private var lastScale: CGFloat = 1.0
     @State private var offset: CGSize = .zero
@@ -21,6 +22,8 @@ struct MindMapDisplayView: View {
     @State private var showDetailToast = false
     @State private var toastDetail = ""
     @State private var toastNodeName = ""
+    @State private var toastNodeCreatedAt: Date = Date()
+    @State private var toastNodeEdition: Int = 1
     
     var nodes: [Node] {
         post.nodes ?? []
@@ -86,10 +89,12 @@ struct MindMapDisplayView: View {
                 }
                 
                 // ノード詳細トースト
-                if showDetailToast && !toastDetail.isEmpty {
+                if showDetailToast {
                     NodeDetailToastView(
                         nodeName: toastNodeName,
                         detail: toastDetail,
+                        createdAt: toastNodeCreatedAt,
+                        edition: toastNodeEdition,
                         onDismiss: {
                             withAnimation {
                                 showDetailToast = false
@@ -101,6 +106,7 @@ struct MindMapDisplayView: View {
                 }
             }
             .gesture(
+                isFixedDisplay ? nil :
                 MagnificationGesture()
                     .onChanged { value in
                         let delta = value / lastScale
@@ -112,6 +118,7 @@ struct MindMapDisplayView: View {
                     }
             )
             .simultaneousGesture(
+                isFixedDisplay ? nil :
                 DragGesture()
                     .onChanged { value in
                         offset = CGSize(
@@ -124,6 +131,7 @@ struct MindMapDisplayView: View {
                     }
             )
             .onTapGesture(count: 2) {
+                guard !isFixedDisplay else { return }
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                     scale = 1.0
                     offset = .zero
@@ -131,10 +139,13 @@ struct MindMapDisplayView: View {
                 }
             }
             .onAppear {
-                centerContent(in: geometry.size)
+                if isFixedDisplay {
+                    applyFixedDisplaySettings(in: geometry.size)
+                } else {
+                    centerContent(in: geometry.size)
+                }
             }
         }
-        .clipped()
     }
     
     private func handleConnectionTap(_ connection: NodeConnection) {
@@ -168,39 +179,62 @@ struct MindMapDisplayView: View {
     }
     
     private func handleNodeLongPress(_ node: Node) {
-        if let detail = node.note, !detail.isEmpty {
-            toastNodeName = node.isCenter ? post.centerNodeText : node.text
-            toastDetail = detail
-            
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
-            
-            withAnimation(.spring(response: 0.3)) {
-                showDetailToast = true
-                showReasonToast = false
-                longPressedConnectionId = nil
-            }
+        // 詳細がなくても追加日は表示する
+        toastNodeName = node.isCenter ? post.centerNodeText : node.text
+        toastDetail = node.note ?? ""
+        toastNodeCreatedAt = node.createdAt
+        toastNodeEdition = node.edition
+        
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        withAnimation(.spring(response: 0.3)) {
+            showDetailToast = true
+            showReasonToast = false
+            longPressedConnectionId = nil
         }
     }
     
     private func centerContent(in size: CGSize) {
         guard !nodes.isEmpty else { return }
-        
-        let avgX = nodes.map { $0.positionX }.reduce(0, +) / Double(nodes.count)
-        let avgY = nodes.map { $0.positionY }.reduce(0, +) / Double(nodes.count)
-        
+
+        // 中心ノードを基準にする（見つからない場合は最初のノード）
+        let centerNode = nodes.first(where: { $0.isCenter }) ?? nodes[0]
+
         let centerX = size.width / 2
         let centerY = size.height / 2
-        
+
         offset = CGSize(
-            width: centerX - avgX,
-            height: centerY - avgY
+            width: centerX - centerNode.positionX,
+            height: centerY - centerNode.positionY
+        )
+        lastOffset = offset
+    }
+
+    private func applyFixedDisplaySettings(in size: CGSize) {
+        guard !nodes.isEmpty else { return }
+
+        // 中心ノードを基準にする（見つからない場合は最初のノード）
+        let centerNode = nodes.first(where: { $0.isCenter }) ?? nodes[0]
+
+        let centerX = size.width / 2
+        let centerY = size.height / 2
+        let baseOffset = CGSize(
+            width: centerX - centerNode.positionX,
+            height: centerY - centerNode.positionY
+        )
+
+        // 保存された表示設定を適用
+        scale = post.displayScale
+        offset = CGSize(
+            width: baseOffset.width + post.displayOffsetX,
+            height: baseOffset.height + post.displayOffsetY
         )
         lastOffset = offset
     }
 }
 
-// MARK: - 表示専用ノードView（スタイル対応）
+// MARK: - 表示専用ノードView（Edition対応・縁色自動設定）
 struct DisplayNodeView: View {
     let node: Node
     let centerNodeText: String
@@ -221,14 +255,20 @@ struct DisplayNodeView: View {
         return false
     }
     
-    // スタイルを取得（保存されていればそれを使用、なければデフォルト）
+    // スタイルを取得（縁色はeditionから自動設定）
     var nodeStyle: NodeStyleData {
         if let styleString = node.style,
            let data = styleString.data(using: .utf8),
            let json = try? JSONDecoder().decode(NodeStyleJSON.self, from: data) {
-            return json.toNodeStyleData()
+            var style = json.toNodeStyleData()
+            // 縁色をeditionから上書き
+            style.borderColor = CodableColor(color: EditionColors.color(for: node.edition))
+            return style
         }
-        return node.isCenter ? .defaultCenter : .defaultChild
+        var defaultStyle = node.isCenter ? NodeStyleData.defaultCenter : NodeStyleData.defaultChild
+        // 縁色をeditionから設定
+        defaultStyle.borderColor = CodableColor(color: EditionColors.color(for: node.edition))
+        return defaultStyle
     }
     
     var body: some View {
@@ -239,7 +279,7 @@ struct DisplayNodeView: View {
                 .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
             
             Circle()
-                .stroke(nodeStyle.borderColor.color, lineWidth: 2)
+                .stroke(nodeStyle.borderColor.color, lineWidth: 3)
                 .frame(width: nodeSize, height: nodeSize)
             
             Text(displayText)
@@ -287,7 +327,6 @@ struct InteractiveConnectionLine: View {
         return false
     }
     
-    // スタイルを取得
     var connectionStyle: ConnectionStyleData {
         if let styleString = connection.style,
            let data = styleString.data(using: .utf8),
@@ -347,10 +386,8 @@ struct InteractiveConnectionLine: View {
                     }
                     .strokedPath(StrokeStyle(lineWidth: 44))
                 )
-                .onTapGesture {
-                    onTap()
-                }
-                .onLongPressGesture(minimumDuration: 0.3) {
+                .onTapGesture { onTap() }
+                .onLongPressGesture(minimumDuration: 0.5) {
                     onLongPress(midPoint)
                 }
                 
@@ -359,7 +396,7 @@ struct InteractiveConnectionLine: View {
                         Circle()
                             .fill(isHighlighted ? Color.pink : connectionStyle.lineColor.color)
                             .frame(width: 28, height: 28)
-                            .shadow(color: .black.opacity(0.2), radius: 3, y: 2)
+                            .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
                         
                         Image(systemName: "text.bubble.fill")
                             .font(.system(size: 14))
@@ -368,9 +405,6 @@ struct InteractiveConnectionLine: View {
                     .position(midPoint)
                     .scaleEffect(isHighlighted ? 1.2 : 1.0)
                     .animation(.spring(response: 0.3), value: isHighlighted)
-                    .onTapGesture {
-                        onTap()
-                    }
                 }
             }
         }
@@ -388,13 +422,14 @@ struct ReasonToastView: View {
             
             VStack(spacing: 12) {
                 HStack {
-                    Image(systemName: "link")
-                        .font(.headline)
-                        .foregroundColor(.purple)
-                    
-                    Text("つながりの理由")
-                        .font(.headline)
-                        .foregroundColor(.purple)
+                    HStack(spacing: 8) {
+                        Image(systemName: "link.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.purple)
+                        
+                        Text("つながりの理由")
+                            .font(.headline)
+                    }
                     
                     Spacer()
                     
@@ -423,11 +458,20 @@ struct ReasonToastView: View {
     }
 }
 
-// MARK: - ノード詳細トースト表示
+// MARK: - ノード詳細トースト表示（追加日・Edition対応）
 struct NodeDetailToastView: View {
     let nodeName: String
     let detail: String
+    let createdAt: Date
+    let edition: Int
     let onDismiss: () -> Void
+    
+    private var dateFormatter: DateFormatter {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ja_JP")
+        f.dateFormat = "yyyy年M月d日"
+        return f
+    }
     
     var body: some View {
         VStack {
@@ -455,11 +499,36 @@ struct NodeDetailToastView: View {
                 
                 Divider()
                 
-                Text(detail)
-                    .font(.body)
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // 追加日とEdition表示
+                HStack(spacing: 16) {
+                    Label(dateFormatter.string(from: createdAt), systemImage: "calendar")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(EditionColors.color(for: edition))
+                            .frame(width: 12, height: 12)
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 0.5)
+                            )
+                        Text("第\(edition)回")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+                
+                // 詳細テキスト（ある場合のみ）
+                if !detail.isEmpty {
+                    Text(detail)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .padding(20)
             .background(
@@ -473,53 +542,3 @@ struct NodeDetailToastView: View {
     }
 }
 
-// MARK: - 理由表示ポップアップ
-struct ReasonDisplayPopup: View {
-    let reason: String
-    let onDismiss: () -> Void
-    
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture { onDismiss() }
-            
-            VStack(spacing: 16) {
-                HStack {
-                    HStack(spacing: 8) {
-                        Image(systemName: "link.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.purple)
-                        
-                        Text("つながりの理由")
-                            .font(.headline)
-                    }
-                    
-                    Spacer()
-                    
-                    Button(action: onDismiss) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.gray)
-                    }
-                }
-                
-                Divider()
-                
-                Text(reason)
-                    .font(.body)
-                    .foregroundColor(.primary)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 8)
-            }
-            .padding(24)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: .black.opacity(0.25), radius: 25)
-            )
-            .padding(.horizontal, 32)
-        }
-    }
-}

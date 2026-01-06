@@ -157,7 +157,8 @@ struct HomePostCardView: View {
                     onShowReason: { reason in
                         selectedReason = reason
                         showReasonPopup = true
-                    }
+                    },
+                    isFixedDisplay: true  // フィード表示は固定
                 )
                 .frame(width: geometry.size.width, height: geometry.size.height * 0.7)
                 .position(x: geometry.size.width / 2, y: geometry.size.height * 0.4)
@@ -191,20 +192,26 @@ struct HomePostCardView: View {
                                 .font(.title)
                                 .foregroundColor(isLiked ? .pink : .primary)
                                 .scaleEffect(likeScale)
-                            Text("\(likeCount)")
-                                .font(.caption)
-                                .foregroundColor(.primary)
+                            // いいね数非表示設定
+                            if !post.hideLikeCount {
+                                Text("\(likeCount)")
+                                    .font(.caption)
+                                    .foregroundColor(.primary)
+                            }
                         }
                     }
-                    
-                    Button(action: { showComments = true }) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "bubble.right")
-                                .font(.title)
-                            Text("\(post.commentCount)")
-                                .font(.caption)
+
+                    // コメントオフの場合は非表示
+                    if post.commentsEnabled {
+                        Button(action: { showComments = true }) {
+                            VStack(spacing: 4) {
+                                Image(systemName: "bubble.right")
+                                    .font(.title)
+                                Text("\(post.commentCount)")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.primary)
                         }
-                        .foregroundColor(.primary)
                     }
                     
                     Button(action: { showFullMap = true }) {
